@@ -116,9 +116,15 @@ def get_sales_summary_by_customer(
     ]
 
 
-def get_top_products(limit: int = 15, seller_id: int = 0) -> list[dict]:
+def get_top_products(limit: int = 15, seller_id: int = 0, date_from: str = "", date_to: str = "") -> list[dict]:
     """Top productos vendidos globalmente (pedidos confirmados), por importe."""
-    domain = [("order_id.state", "in", ["sale", "done"])]
+    from datetime import date
+    domain = [
+        ("order_id.state", "in", ["sale", "done"]),
+        ("order_id.date_order", ">=", date_from or f"{date.today().year}-01-01"),
+    ]
+    if date_to:
+        domain.append(("order_id.date_order", "<=", date_to))
     if seller_id:
         domain.append(("order_id.user_id", "=", seller_id))
     groups = odoo.read_group(
@@ -194,6 +200,8 @@ def get_pending_orders(limit: int = 50, seller_id: int = 0) -> list[dict]:
 def get_top_products_by_customer(
     customer_name: str,
     limit: int = 10,
+    date_from: str = "",
+    date_to: str = "",
 ) -> list[dict]:
     """
     Productos más vendidos a un cliente específico, ordenados por importe total.
@@ -201,13 +209,20 @@ def get_top_products_by_customer(
     Args:
         customer_name: Nombre o parte del nombre del cliente
         limit: Número de productos a devolver
+        date_from: Fecha inicio YYYY-MM-DD (por defecto enero del año actual)
+        date_to: Fecha fin YYYY-MM-DD
     """
+    from datetime import date
+    domain = [
+        ("order_id.partner_id.name", "ilike", customer_name),
+        ("order_id.state", "in", ["sale", "done"]),
+        ("order_id.date_order", ">=", date_from or f"{date.today().year}-01-01"),
+    ]
+    if date_to:
+        domain.append(("order_id.date_order", "<=", date_to))
     groups = odoo.read_group(
         model="sale.order.line",
-        domain=[
-            ("order_id.partner_id.name", "ilike", customer_name),
-            ("order_id.state", "in", ["sale", "done"]),
-        ],
+        domain=domain,
         fields=["product_id", "product_uom_qty:sum", "price_subtotal:sum"],
         groupby=["product_id"],
         orderby="price_subtotal desc",
@@ -230,9 +245,11 @@ def get_ventas_kilos_por_producto(
     customer_name: str = "",
     limit: int = 20,
 ) -> list[dict]:
-    domain: list = [("state", "in", ["sale", "done"])]
-    if date_from:
-        domain.append(("order_id.date_order", ">=", date_from))
+    from datetime import date as _date
+    domain: list = [
+        ("state", "in", ["sale", "done"]),
+        ("order_id.date_order", ">=", date_from or f"{_date.today().year}-01-01"),
+    ]
     if date_to:
         domain.append(("order_id.date_order", "<=", date_to))
     if customer_name:
@@ -266,12 +283,12 @@ def get_ventas_precio_por_cliente(
     date_from: str = "",
     date_to: str = "",
 ) -> list[dict]:
+    from datetime import date as _date
     domain: list = [
         ("product_id.name", "ilike", product_name),
         ("state", "in", ["sale", "done"]),
+        ("order_id.date_order", ">=", date_from or f"{_date.today().year}-01-01"),
     ]
-    if date_from:
-        domain.append(("order_id.date_order", ">=", date_from))
     if date_to:
         domain.append(("order_id.date_order", "<=", date_to))
 

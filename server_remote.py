@@ -42,15 +42,15 @@ def ventas_resumen_por_vendedor(date_from: str = "", date_to: str = "") -> list[
 
 
 @mcp.tool()
-def ventas_top_productos(limit: int = 15) -> list[dict]:
-    """Top productos vendidos globalmente."""
-    return get_top_products(limit=limit)
+def ventas_top_productos(limit: int = 15, date_from: str = "", date_to: str = "") -> list[dict]:
+    """Top productos vendidos globalmente. Por defecto muestra el año en curso."""
+    return get_top_products(limit=limit, date_from=date_from, date_to=date_to)
 
 
 @mcp.tool()
-def ventas_top_productos_cliente(customer_name: str, limit: int = 10) -> list[dict]:
-    """Productos más vendidos a un cliente concreto."""
-    return get_top_products_by_customer(customer_name=customer_name, limit=limit)
+def ventas_top_productos_cliente(customer_name: str, limit: int = 10, date_from: str = "", date_to: str = "") -> list[dict]:
+    """Productos más vendidos a un cliente concreto. Por defecto muestra el año en curso."""
+    return get_top_products_by_customer(customer_name=customer_name, limit=limit, date_from=date_from, date_to=date_to)
 
 
 @mcp.tool()
