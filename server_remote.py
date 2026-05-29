@@ -9,12 +9,14 @@ from tools.sales import (
     get_sales_orders, get_sales_summary_by_customer,
     get_sales_summary_by_seller, get_top_products,
     get_pending_orders, get_top_products_by_customer,
+    get_ventas_kilos_por_producto, get_ventas_precio_por_cliente,
 )
 from tools.customers import get_top_customers, get_customer_stats
 from tools.invoices import (
     get_invoices, get_revenue_summary,
     get_overdue_summary, get_invoices_by_customer,
 )
+from tools.purchases import get_compras_precio_por_proveedor
 
 mcp = FastMCP("Odoo 18 — Fruta de Andalucía",
               host="0.0.0.0",
@@ -91,6 +93,24 @@ def facturas_resumen_ingresos(date_from: str = "", date_to: str = "") -> dict:
 def facturas_vencidas_por_cliente() -> list[dict]:
     """Clientes con facturas vencidas ordenados por mayor deuda."""
     return get_overdue_summary()
+
+
+@mcp.tool()
+def ventas_kilos_por_producto(date_from: str = "", date_to: str = "", customer_name: str = "", limit: int = 20) -> list[dict]:
+    """Top productos por kg vendidos con precio medio real (importe/kg)."""
+    return get_ventas_kilos_por_producto(date_from=date_from, date_to=date_to, customer_name=customer_name, limit=limit)
+
+
+@mcp.tool()
+def ventas_precio_por_cliente(product_name: str, date_from: str = "", date_to: str = "") -> list[dict]:
+    """Para un producto concreto, muestra el precio medio, mín y máx que paga cada cliente."""
+    return get_ventas_precio_por_cliente(product_name=product_name, date_from=date_from, date_to=date_to)
+
+
+@mcp.tool()
+def compras_precio_por_proveedor(product_name: str, date_from: str = "", date_to: str = "") -> list[dict]:
+    """Para un producto concreto, compara el precio de cada proveedor (ordenado de menor a mayor)."""
+    return get_compras_precio_por_proveedor(product_name=product_name, date_from=date_from, date_to=date_to)
 
 
 if __name__ == "__main__":

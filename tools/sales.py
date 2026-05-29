@@ -224,6 +224,108 @@ def get_top_products_by_customer(
     ]
 
 
+def get_ventas_kilos_por_producto(
+    date_from: str = "",
+    date_to: str = "",
+    customer_name: str = "",
+    limit: int = 20,
+) -> list[dict]:
+    domain: list = [("order_id.state", "in", ["sale", "done"])]
+    if date_from:
+        domain.append(("order_id.date_order", ">=", date_from))
+    if date_to:
+        domain.append(("order_id.date_order", "<=", date_to))
+    if customer_name:
+        domain.append(("order_id.partner_id.name", "ilike", customer_name))
+
+    groups = odoo.read_group(
+        model="sale.order.line",
+        domain=domain,
+        fields=["product_id", "product_uom_qty:sum", "price_subtotal:sum"],
+        groupby=["product_id"],
+        orderby="product_uom_qty desc",
+    )
+
+    result = []
+    for g in groups[:limit]:
+        if not g.get("product_id"):
+            continue
+        qty = g["product_uom_qty"] or 0
+        revenue = g["price_subtotal"] or 0
+        result.append({
+            "producto": g["product_id"][1],
+            "total_kg": round(qty, 2),
+            "precio_medio_kg": round(revenue / qty, 4) if qty else 0,
+            "importe_total": round(revenue, 2),
+        })
+    return result
+
+
+def get_ventas_precio_por_cliente(
+    product_name: str,
+    date_from: str = "",
+    date_to: str = "",
+) -> list[dict]:
+    domain: list = [
+        ("product_id.name", "ilike", product_name),
+        ("order_id.state", "in", ["sale", "done"]),
+    ]
+    if date_from:
+        domain.append(("order_id.date_order", ">=", date_from))
+    if date_to:
+        domain.append(("order_id.date_order", "<=", date_to))
+
+    lines = odoo.search_read(
+        model="sale.order.line",
+        domain=domain,
+        fields=["product_id", "order_id", "product_uom_qty", "price_unit", "price_subtotal"],
+        limit=5000,
+    )
+    if not lines:
+        return [{"error": f"No se encontraron ventas del producto '{product_name}'"}]
+
+    order_ids = list({l["order_id"][0] for l in lines if l.get("order_id")})
+    orders = odoo.search_read(
+        model="sale.order",
+        domain=[("id", "in", order_ids)],
+        fields=["id", "partner_id"],
+        limit=len(order_ids) + 1,
+    )
+    order_partner = {
+        o["id"]: o["partner_id"][1] if o["partner_id"] else "Sin cliente"
+        for o in orders
+    }
+
+    customers: dict = {}
+    for line in lines:
+        partner = order_partner.get(line["order_id"][0], "Sin cliente") if line.get("order_id") else "Sin cliente"
+        if partner not in customers:
+            customers[partner] = {"total_kg": 0.0, "total_revenue": 0.0, "precios": []}
+        customers[partner]["total_kg"] += line["product_uom_qty"] or 0
+        customers[partner]["total_revenue"] += line["price_subtotal"] or 0
+        if line["price_unit"] > 0:
+            customers[partner]["precios"].append(line["price_unit"])
+
+    result = []
+    for nombre, data in customers.items():
+        qty = data["total_kg"]
+        rev = data["total_revenue"]
+        precios = data["precios"]
+        if not qty:
+            continue
+        result.append({
+            "cliente": nombre,
+            "total_kg": round(qty, 2),
+            "precio_medio_real": round(rev / qty, 4),
+            "precio_min": round(min(precios), 4) if precios else 0,
+            "precio_max": round(max(precios), 4) if precios else 0,
+            "importe_total": round(rev, 2),
+        })
+
+    result.sort(key=lambda x: x["precio_medio_real"], reverse=True)
+    return result
+
+
 def get_sales_summary_by_seller(
     date_from: str = "",
     date_to: str = "",
