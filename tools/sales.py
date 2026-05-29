@@ -197,6 +197,67 @@ def get_pending_orders(limit: int = 50, seller_id: int = 0) -> list[dict]:
     ]
 
 
+def get_albaran_detalle(referencia: str) -> dict:
+    orders = odoo.search_read(
+        model="sale.order",
+        domain=[("name", "ilike", referencia)],
+        fields=[
+            "name", "partner_id", "date_order", "state", "amount_untaxed",
+            "amount_total", "user_id", "invoice_status", "client_order_ref",
+            "destination_id", "carrier_id", "transport_company", "incoterm",
+            "payment_term_id", "observation",
+        ],
+        limit=5,
+        order="date_order desc",
+    )
+    if not orders:
+        return {"error": f"No se encontró ningún albarán con referencia '{referencia}'"}
+
+    order = orders[0]
+    order_id = order["id"]
+
+    lines = odoo.search_read(
+        model="sale.order.line",
+        domain=[("order_id", "=", order_id)],
+        fields=[
+            "product_id", "family_id", "variety", "product_uom_qty",
+            "product_uom", "price_unit", "discount", "price_subtotal",
+        ],
+        limit=200,
+    )
+
+    return {
+        "referencia": order["name"],
+        "ref_cliente": order["client_order_ref"] or "",
+        "cliente": order["partner_id"][1] if order["partner_id"] else "",
+        "fecha": order["date_order"],
+        "estado": order["state"],
+        "estado_factura": order["invoice_status"],
+        "centro_manipulacion": order["user_id"][1] if order["user_id"] else "",
+        "destino": order["destination_id"][1] if order["destination_id"] else "",
+        "transportista": order["carrier_id"][1] if order["carrier_id"] else "",
+        "empresa_transporte": order["transport_company"] or "",
+        "incoterm": order["incoterm"][1] if order["incoterm"] else "",
+        "forma_pago": order["payment_term_id"][1] if order["payment_term_id"] else "",
+        "observacion": order["observation"] or "",
+        "base_imponible": order["amount_untaxed"],
+        "total": order["amount_total"],
+        "lineas": [
+            {
+                "producto": l["product_id"][1] if l["product_id"] else "",
+                "familia": l["family_id"][1] if l["family_id"] else "",
+                "variedad": l["variety"] or "",
+                "cantidad": l["product_uom_qty"],
+                "unidad": l["product_uom"][1] if l["product_uom"] else "",
+                "precio_unit": round(l["price_unit"], 4),
+                "descuento": l["discount"],
+                "subtotal": round(l["price_subtotal"], 2),
+            }
+            for l in lines
+        ],
+    }
+
+
 def get_top_products_by_customer(
     customer_name: str,
     limit: int = 10,

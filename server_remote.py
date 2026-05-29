@@ -10,6 +10,7 @@ from tools.sales import (
     get_sales_summary_by_seller, get_top_products,
     get_pending_orders, get_top_products_by_customer,
     get_ventas_kilos_por_producto, get_ventas_precio_por_cliente,
+    get_albaran_detalle,
 )
 from tools.customers import get_top_customers, get_customer_stats
 from tools.invoices import (
@@ -37,7 +38,7 @@ def ventas_resumen_por_cliente(date_from: str = "", date_to: str = "", limit: in
 
 @mcp.tool()
 def ventas_resumen_por_vendedor(date_from: str = "", date_to: str = "") -> list[dict]:
-    """Resumen de albaranes (ventas) agrupado por vendedor/centro de producción."""
+    """Resumen de albaranes (ventas) agrupado por centro de manipulación (user_id)."""
     return get_sales_summary_by_seller(date_from=date_from, date_to=date_to)
 
 
@@ -93,6 +94,12 @@ def facturas_resumen_ingresos(date_from: str = "", date_to: str = "") -> dict:
 def facturas_vencidas_por_cliente() -> list[dict]:
     """Clientes con facturas vencidas ordenados por mayor deuda."""
     return get_overdue_summary()
+
+
+@mcp.tool()
+def albaran_detalle(referencia: str) -> dict:
+    """Devuelve todos los detalles de un albarán (cabecera + líneas): cliente, fecha, centro de manipulación, destino, transportista, productos con variedad y precio."""
+    return get_albaran_detalle(referencia=referencia)
 
 
 @mcp.tool()
