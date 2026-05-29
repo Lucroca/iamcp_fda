@@ -25,19 +25,19 @@ mcp = FastMCP("Odoo 18 — Fruta de Andalucía",
 
 @mcp.tool()
 def ventas_listar(state: str = "all", limit: int = 20, date_from: str = "", date_to: str = "") -> list[dict]:
-    """Lista pedidos de venta de Odoo."""
+    """Lista albaranes (pedidos de venta) de Odoo. Un albarán es un sale.order."""
     return get_sales_orders(state=state, limit=limit, date_from=date_from, date_to=date_to)
 
 
 @mcp.tool()
 def ventas_resumen_por_cliente(date_from: str = "", date_to: str = "", limit: int = 20) -> list[dict]:
-    """Resumen de ventas agrupado por cliente."""
+    """Resumen de albaranes (ventas) agrupado por cliente."""
     return get_sales_summary_by_customer(date_from=date_from, date_to=date_to, limit=limit)
 
 
 @mcp.tool()
 def ventas_resumen_por_vendedor(date_from: str = "", date_to: str = "") -> list[dict]:
-    """Resumen de ventas agrupado por vendedor/centro de producción."""
+    """Resumen de albaranes (ventas) agrupado por vendedor/centro de producción."""
     return get_sales_summary_by_seller(date_from=date_from, date_to=date_to)
 
 
@@ -55,7 +55,7 @@ def ventas_top_productos_cliente(customer_name: str, limit: int = 10, date_from:
 
 @mcp.tool()
 def ventas_pedidos_pendientes(limit: int = 50) -> list[dict]:
-    """Presupuestos pendientes de confirmar."""
+    """Albaranes (pedidos de venta) pendientes de confirmar."""
     return get_pending_orders(limit=limit)
 
 
