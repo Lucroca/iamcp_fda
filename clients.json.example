@@ -1,0 +1,16 @@
+{
+  "TOKEN_SECRETO_CLIENTE_A_32CHARS": {
+    "nombre": "frutaandalucia",
+    "odoo_url": "https://frutadeandalucia.alfinfdoo.com",
+    "odoo_db": "fruta_andalucia_18",
+    "odoo_username": "admin",
+    "odoo_api_key": "tu_api_key"
+  },
+  "TOKEN_SECRETO_CLIENTE_B_32CHARS": {
+    "nombre": "otroCliente",
+    "odoo_url": "https://otrocliente.odoo.com",
+    "odoo_db": "otro_db",
+    "odoo_username": "admin",
+    "odoo_api_key": "otra_api_key"
+  }
+}

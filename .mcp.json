@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "odoo18": {
+      "command": "C:\\Users\\Carlos\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+      "args": ["c:\\repos_odoo\\mcp_ia\\server.py"],
+      "env": {
+        "ODOO_URL": "https://frutadeandalucia.alfinfdoo.com",
+        "ODOO_DB": "fruta_andalucia_18",
+        "ODOO_USERNAME": "admin",
+        "ODOO_API_KEY": "4e647dc8d74f89646edf5e9d645f447aadf9c57e"
+      }
+    }
+  }
+}
