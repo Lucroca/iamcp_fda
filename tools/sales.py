@@ -230,13 +230,13 @@ def get_ventas_kilos_por_producto(
     customer_name: str = "",
     limit: int = 20,
 ) -> list[dict]:
-    domain: list = [("order_id.state", "in", ["sale", "done"])]
+    domain: list = [("state", "in", ["sale", "done"])]
     if date_from:
         domain.append(("order_id.date_order", ">=", date_from))
     if date_to:
         domain.append(("order_id.date_order", "<=", date_to))
     if customer_name:
-        domain.append(("order_id.partner_id.name", "ilike", customer_name))
+        domain.append(("order_partner_id.name", "ilike", customer_name))
 
     groups = odoo.read_group(
         model="sale.order.line",
@@ -268,7 +268,7 @@ def get_ventas_precio_por_cliente(
 ) -> list[dict]:
     domain: list = [
         ("product_id.name", "ilike", product_name),
-        ("order_id.state", "in", ["sale", "done"]),
+        ("state", "in", ["sale", "done"]),
     ]
     if date_from:
         domain.append(("order_id.date_order", ">=", date_from))
@@ -278,27 +278,15 @@ def get_ventas_precio_por_cliente(
     lines = odoo.search_read(
         model="sale.order.line",
         domain=domain,
-        fields=["product_id", "order_id", "product_uom_qty", "price_unit", "price_subtotal"],
+        fields=["order_partner_id", "product_uom_qty", "price_unit", "price_subtotal"],
         limit=5000,
     )
     if not lines:
         return [{"error": f"No se encontraron ventas del producto '{product_name}'"}]
 
-    order_ids = list({l["order_id"][0] for l in lines if l.get("order_id")})
-    orders = odoo.search_read(
-        model="sale.order",
-        domain=[("id", "in", order_ids)],
-        fields=["id", "partner_id"],
-        limit=len(order_ids) + 1,
-    )
-    order_partner = {
-        o["id"]: o["partner_id"][1] if o["partner_id"] else "Sin cliente"
-        for o in orders
-    }
-
     customers: dict = {}
     for line in lines:
-        partner = order_partner.get(line["order_id"][0], "Sin cliente") if line.get("order_id") else "Sin cliente"
+        partner = line["order_partner_id"][1] if line.get("order_partner_id") else "Sin cliente"
         if partner not in customers:
             customers[partner] = {"total_kg": 0.0, "total_revenue": 0.0, "precios": []}
         customers[partner]["total_kg"] += line["product_uom_qty"] or 0
