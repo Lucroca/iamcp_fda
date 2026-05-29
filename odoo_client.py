@@ -6,12 +6,8 @@ from config import ODOO_URL, ODOO_DB, ODOO_USERNAME, ODOO_API_KEY
 
 def _make_transport() -> xmlrpc.client.SafeTransport:
     ctx = ssl.create_default_context()
-    try:
-        import certifi
-        ctx.load_verify_locations(certifi.where())
-    except ImportError:
-        # certifi no disponible — usar CAs del sistema si existen
-        pass
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
     return xmlrpc.client.SafeTransport(context=ctx)
 
 
@@ -22,15 +18,14 @@ class OdooClient:
         self.username = ODOO_USERNAME
         self.api_key = ODOO_API_KEY
         self._uid: int | None = None
-        self._transport = _make_transport()
 
     @cached_property
     def _common(self):
-        return xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/common", transport=self._transport)
+        return xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/common", transport=_make_transport())
 
     @cached_property
     def _models(self):
-        return xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/object", transport=self._transport)
+        return xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/object", transport=_make_transport())
 
     @property
     def uid(self) -> int:
