@@ -5,7 +5,7 @@ def get_sellers() -> list[dict]:
     """Devuelve la lista de vendedores que tienen pedidos confirmados."""
     groups = odoo.read_group(
         model="sale.order",
-        domain=[("state", "in", ["sale", "done"]), ("user_id", "!=", False)],
+        domain=[("state", "in", ["draft", "sent", "sale", "done"]), ("user_id", "!=", False)],
         fields=["user_id", "id:count"],
         groupby=["user_id"],
         orderby="user_id asc",
@@ -90,7 +90,7 @@ def get_sales_summary_by_customer(
         limit: Número máximo de clientes a devolver
         seller_id: ID del vendedor para filtrar (0 = todos)
     """
-    domain: list = [("state", "in", ["sale", "done"])]
+    domain: list = [("state", "in", ["draft", "sent", "sale", "done"])]
     if date_from:
         domain.append(("date_order", ">=", date_from))
     if date_to:
@@ -120,7 +120,7 @@ def get_top_products(limit: int = 15, seller_id: int = 0, date_from: str = "", d
     """Top productos vendidos globalmente (pedidos confirmados), por importe."""
     from datetime import date
     domain = [
-        ("order_id.state", "in", ["sale", "done"]),
+        ("order_id.state", "in", ["draft", "sent", "sale", "done"]),
         ("order_id.date_order", ">=", date_from or f"{date.today().year}-01-01"),
     ]
     if date_to:
@@ -148,7 +148,7 @@ def get_top_products(limit: int = 15, seller_id: int = 0, date_from: str = "", d
 def get_sales_by_month(year: int, seller_id: int = 0) -> list[dict]:
     """Ventas confirmadas agrupadas por mes para un año dado."""
     domain = [
-        ("state", "in", ["sale", "done"]),
+        ("state", "in", ["draft", "sent", "sale", "done"]),
         ("date_order", ">=", f"{year}-01-01"),
         ("date_order", "<=", f"{year}-12-31"),
     ]
@@ -276,7 +276,7 @@ def get_top_products_by_customer(
     from datetime import date
     domain = [
         ("order_id.partner_id.name", "ilike", customer_name),
-        ("order_id.state", "in", ["sale", "done"]),
+        ("order_id.state", "in", ["draft", "sent", "sale", "done"]),
         ("order_id.date_order", ">=", date_from or f"{date.today().year}-01-01"),
     ]
     if date_to:
@@ -308,7 +308,7 @@ def get_ventas_kilos_por_producto(
 ) -> list[dict]:
     from datetime import date as _date
     domain: list = [
-        ("state", "in", ["sale", "done"]),
+        ("state", "in", ["draft", "sent", "sale", "done"]),
         ("order_id.date_order", ">=", date_from or f"{_date.today().year}-01-01"),
     ]
     if date_to:
@@ -347,7 +347,7 @@ def get_ventas_precio_por_cliente(
     from datetime import date as _date
     domain: list = [
         ("product_id.name", "ilike", product_name),
-        ("state", "in", ["sale", "done"]),
+        ("state", "in", ["draft", "sent", "sale", "done"]),
         ("order_id.date_order", ">=", date_from or f"{_date.today().year}-01-01"),
     ]
     if date_to:
@@ -405,7 +405,7 @@ def get_sales_summary_by_seller(
         date_to: Fecha fin YYYY-MM-DD
         customer_name: Nombre o parte del nombre del cliente para filtrar
     """
-    domain: list = [("state", "in", ["sale", "done"])]
+    domain: list = [("state", "in", ["draft", "sent", "sale", "done"])]
     if date_from:
         domain.append(("date_order", ">=", date_from))
     if date_to:

@@ -74,7 +74,7 @@ def get_customer_stats(customer_name: str) -> dict:
     partner_id = partner["id"]
 
     num_orders = odoo.search_count(
-        "sale.order", [("partner_id", "=", partner_id), ("state", "in", ["sale", "done"])]
+        "sale.order", [("partner_id", "=", partner_id), ("state", "in", ["draft", "sent", "sale", "done"])]
     )
 
     invoices = odoo.search_read(
@@ -105,7 +105,7 @@ def get_sales_by_country(date_from: str = "", date_to: str = "", seller_id: int 
     """Ventas confirmadas agrupadas por país del cliente."""
     from collections import defaultdict
 
-    domain: list = [("state", "in", ["sale", "done"])]
+    domain: list = [("state", "in", ["draft", "sent", "sale", "done"])]
     if date_from:
         domain.append(("date_order", ">=", date_from))
     if date_to:
@@ -157,7 +157,7 @@ def get_customers_from_country(country_name: str) -> list[dict]:
     groups = odoo.read_group(
         model="sale.order",
         domain=[
-            ("state", "in", ["sale", "done"]),
+            ("state", "in", ["draft", "sent", "sale", "done"]),
             ("partner_id.country_id.name", "=", country_name),
         ],
         fields=["partner_id", "amount_total:sum", "id:count"],
@@ -208,7 +208,7 @@ def get_top_customers(
         limit: Número de clientes a devolver
         seller_id: ID del vendedor para filtrar (0 = todos)
     """
-    domain: list = [("state", "in", ["sale", "done"])]
+    domain: list = [("state", "in", ["draft", "sent", "sale", "done"])]
     if date_from:
         domain.append(("date_order", ">=", date_from))
     if date_to:
