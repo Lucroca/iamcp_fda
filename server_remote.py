@@ -18,6 +18,11 @@ from tools.invoices import (
     get_overdue_summary, get_invoices_by_customer,
 )
 from tools.purchases import get_compras_precio_por_proveedor
+from tools.pallets import (
+    get_pallets_sin_albaran, get_pallets_con_albaran,
+    get_pallet_trazabilidad, get_pallets_entradas_agricultor,
+    get_pallets_stock,
+)
 
 mcp = FastMCP("Odoo 18 — Fruta de Andalucía",
               host="0.0.0.0",
@@ -118,6 +123,36 @@ def ventas_precio_por_cliente(product_name: str, date_from: str = "", date_to: s
 def compras_precio_por_proveedor(product_name: str, date_from: str = "", date_to: str = "") -> list[dict]:
     """Para un producto concreto, compara el precio de cada proveedor (ordenado de menor a mayor)."""
     return get_compras_precio_por_proveedor(product_name=product_name, date_from=date_from, date_to=date_to)
+
+
+@mcp.tool()
+def pallets_sin_albaran(limit: int = 50, date_from: str = "", date_to: str = "") -> list[dict]:
+    """Pallets de salida que no están asignados a ningún albarán (pedido de venta)."""
+    return get_pallets_sin_albaran(limit=limit, date_from=date_from, date_to=date_to)
+
+
+@mcp.tool()
+def pallets_con_albaran(limit: int = 50, date_from: str = "", date_to: str = "") -> list[dict]:
+    """Pallets de salida asignados a un albarán, mostrando a qué cliente y pedido van. Por defecto año en curso."""
+    return get_pallets_con_albaran(limit=limit, date_from=date_from, date_to=date_to)
+
+
+@mcp.tool()
+def pallet_trazabilidad(referencia: str) -> dict:
+    """Trazabilidad completa de un pallet de salida: cabecera, albarán, cliente y líneas con agricultor, variedad y pallet de entrada."""
+    return get_pallet_trazabilidad(referencia=referencia)
+
+
+@mcp.tool()
+def pallets_entradas_agricultor(date_from: str = "", date_to: str = "", limit: int = 30) -> list[dict]:
+    """Resumen de entradas de pallets agrupado por agricultor (kg bruto, neto, cajas). Por defecto año en curso."""
+    return get_pallets_entradas_agricultor(date_from=date_from, date_to=date_to, limit=limit)
+
+
+@mcp.tool()
+def pallets_stock(agricultor_name: str = "") -> list[dict]:
+    """Stock actual de pallets de entrada pendientes de procesar. Filtra opcionalmente por nombre de agricultor."""
+    return get_pallets_stock(agricultor_name=agricultor_name)
 
 
 if __name__ == "__main__":
