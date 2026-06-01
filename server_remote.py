@@ -19,7 +19,7 @@ from tools.invoices import (
 )
 from tools.purchases import get_compras_precio_por_proveedor
 from tools.pallets import (
-    get_pallets_sin_albaran, get_pallets_con_albaran,
+    get_pallets_listar, get_pallets_sin_albaran, get_pallets_con_albaran,
     get_pallet_trazabilidad, get_pallets_entradas_agricultor,
     get_pallets_stock,
 )
@@ -123,6 +123,12 @@ def ventas_precio_por_cliente(product_name: str, date_from: str = "", date_to: s
 def compras_precio_por_proveedor(product_name: str, date_from: str = "", date_to: str = "") -> list[dict]:
     """Para un producto concreto, compara el precio de cada proveedor (ordenado de menor a mayor)."""
     return get_compras_precio_por_proveedor(product_name=product_name, date_from=date_from, date_to=date_to)
+
+
+@mcp.tool()
+def pallets_listar(limit: int = 50, date_from: str = "", date_to: str = "", solo_sin_albaran: bool = False) -> list[dict]:
+    """Lista pallets de salida con columna 'albaran' (vacía si no tiene albarán asignado). Por defecto año en curso. Usa solo_sin_albaran=true para ver solo los pendientes."""
+    return get_pallets_listar(limit=limit, date_from=date_from, date_to=date_to, solo_sin_albaran=solo_sin_albaran)
 
 
 @mcp.tool()

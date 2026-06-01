@@ -11,12 +11,17 @@ def _date_domain(field: str, date_from: str, date_to: str) -> list:
     return domain
 
 
-def get_pallets_sin_albaran(limit: int = 50, date_from: str = "", date_to: str = "") -> list[dict]:
-    domain = [["sale_order_id", "=", False]] + _date_domain("date", date_from, date_to)
+def get_pallets_listar(limit: int = 50, date_from: str = "", date_to: str = "", solo_sin_albaran: bool = False) -> list[dict]:
+    if not date_from and not date_to:
+        date_from = f"{date.today().year}-01-01"
+    domain = _date_domain("date", date_from, date_to)
+    if solo_sin_albaran:
+        domain.append(["sale_order_id", "=", False])
     records = odoo.search_read(
         "alfinf.pallet.out",
         domain,
-        ["name", "partner_id", "pallet_type_id", "total_kilos", "kg_net", "date", "operating_unit_id"],
+        ["name", "partner_id", "pallet_type_id", "sale_order_name", "sale_order_date",
+         "total_kilos", "kg_net", "date", "state", "operating_unit_id"],
         limit=limit,
         order="date desc",
     )
@@ -24,14 +29,21 @@ def get_pallets_sin_albaran(limit: int = 50, date_from: str = "", date_to: str =
         {
             "pallet": r["name"],
             "cliente": r["partner_id"][1] if r["partner_id"] else "",
+            "albaran": r["sale_order_name"] or "",
+            "fecha_albaran": r["sale_order_date"] or "",
             "tipo": r["pallet_type_id"][1] if r["pallet_type_id"] else "",
             "kilos_bruto": r["total_kilos"],
             "kilos_neto": r["kg_net"],
             "fecha": r["date"],
+            "estado": r["state"] or "",
             "centro": r["operating_unit_id"][1] if r["operating_unit_id"] else "",
         }
         for r in records
     ]
+
+
+def get_pallets_sin_albaran(limit: int = 50, date_from: str = "", date_to: str = "") -> list[dict]:
+    return get_pallets_listar(limit=limit, date_from=date_from, date_to=date_to, solo_sin_albaran=True)
 
 
 def get_pallets_con_albaran(limit: int = 50, date_from: str = "", date_to: str = "") -> list[dict]:
@@ -41,7 +53,7 @@ def get_pallets_con_albaran(limit: int = 50, date_from: str = "", date_to: str =
     records = odoo.search_read(
         "alfinf.pallet.out",
         domain,
-        ["name", "partner_id", "sale_order_name", "sale_order_partner", "sale_order_date",
+        ["name", "partner_id", "pallet_type_id", "sale_order_name", "sale_order_date",
          "total_kilos", "kg_net", "date", "state", "operating_unit_id"],
         limit=limit,
         order="date desc",
@@ -50,7 +62,7 @@ def get_pallets_con_albaran(limit: int = 50, date_from: str = "", date_to: str =
         {
             "pallet": r["name"],
             "albaran": r["sale_order_name"] or "",
-            "cliente": r["partner_id"][1] if r["partner_id"] else r["sale_order_partner"] or "",
+            "cliente": r["partner_id"][1] if r["partner_id"] else "",
             "fecha_pallet": r["date"],
             "fecha_albaran": r["sale_order_date"] or "",
             "kilos_bruto": r["total_kilos"],
