@@ -18,6 +18,7 @@ from tools.invoices import (
     get_overdue_summary, get_invoices_by_customer,
 )
 from tools.purchases import get_compras_precio_por_proveedor
+from tools.families import get_familias_listar
 from tools.pallets import (
     get_pallets_listar, get_pallets_sin_albaran, get_pallets_con_albaran,
     get_pallet_trazabilidad, get_pallets_entradas_agricultor,
@@ -48,9 +49,9 @@ def ventas_resumen_por_vendedor(date_from: str = "", date_to: str = "") -> list[
 
 
 @mcp.tool()
-def ventas_top_productos(limit: int = 15, date_from: str = "", date_to: str = "") -> list[dict]:
-    """Top productos vendidos globalmente. Por defecto muestra el año en curso."""
-    return get_top_products(limit=limit, date_from=date_from, date_to=date_to)
+def ventas_top_productos(limit: int = 15, date_from: str = "", date_to: str = "", familia_nombre: str = "") -> list[dict]:
+    """Top productos vendidos globalmente con columna familia. Filtra por familia con familia_nombre. Por defecto año en curso."""
+    return get_top_products(limit=limit, date_from=date_from, date_to=date_to, familia_nombre=familia_nombre)
 
 
 @mcp.tool()
@@ -108,9 +109,9 @@ def albaran_detalle(referencia: str) -> dict:
 
 
 @mcp.tool()
-def ventas_kilos_por_producto(date_from: str = "", date_to: str = "", customer_name: str = "", limit: int = 20) -> list[dict]:
-    """Top productos por kg vendidos con precio medio real (importe/kg)."""
-    return get_ventas_kilos_por_producto(date_from=date_from, date_to=date_to, customer_name=customer_name, limit=limit)
+def ventas_kilos_por_producto(date_from: str = "", date_to: str = "", customer_name: str = "", familia_nombre: str = "", limit: int = 20) -> list[dict]:
+    """Top productos por kg vendidos con precio medio real y columna familia. Filtra por familia con familia_nombre."""
+    return get_ventas_kilos_por_producto(date_from=date_from, date_to=date_to, customer_name=customer_name, familia_nombre=familia_nombre, limit=limit)
 
 
 @mcp.tool()
@@ -126,9 +127,15 @@ def compras_precio_por_proveedor(product_name: str, date_from: str = "", date_to
 
 
 @mcp.tool()
-def pallets_listar(limit: int = 50, date_from: str = "", date_to: str = "", solo_sin_albaran: bool = False) -> list[dict]:
-    """Lista pallets de salida con columna 'albaran' (vacía si no tiene albarán asignado). Por defecto año en curso. Usa solo_sin_albaran=true para ver solo los pendientes."""
-    return get_pallets_listar(limit=limit, date_from=date_from, date_to=date_to, solo_sin_albaran=solo_sin_albaran)
+def familias_listar() -> list[dict]:
+    """Lista todas las familias de producto con sus variedades, código intrastat y tolerancias."""
+    return get_familias_listar()
+
+
+@mcp.tool()
+def pallets_listar(limit: int = 50, date_from: str = "", date_to: str = "", solo_sin_albaran: bool = False, familia_nombre: str = "") -> list[dict]:
+    """Lista pallets de salida con columna 'albaran' (vacía si no tiene albarán asignado). Por defecto año en curso. Filtra por familia con familia_nombre."""
+    return get_pallets_listar(limit=limit, date_from=date_from, date_to=date_to, solo_sin_albaran=solo_sin_albaran, familia_nombre=familia_nombre)
 
 
 @mcp.tool()

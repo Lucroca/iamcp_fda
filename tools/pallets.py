@@ -11,12 +11,22 @@ def _date_domain(field: str, date_from: str, date_to: str) -> list:
     return domain
 
 
-def get_pallets_listar(limit: int = 50, date_from: str = "", date_to: str = "", solo_sin_albaran: bool = False) -> list[dict]:
+def get_pallets_listar(limit: int = 50, date_from: str = "", date_to: str = "", solo_sin_albaran: bool = False, familia_nombre: str = "") -> list[dict]:
     if not date_from and not date_to:
         date_from = f"{date.today().year}-01-01"
     domain = _date_domain("date", date_from, date_to)
     if solo_sin_albaran:
         domain.append(["sale_order_id", "=", False])
+    if familia_nombre:
+        lines = odoo.search_read(
+            "alfinf.pallet.out.line",
+            [["family_id.name", "ilike", familia_nombre]],
+            ["pallet_id"], limit=5000,
+        )
+        pallet_ids = list({l["pallet_id"][0] for l in lines if l.get("pallet_id")})
+        if not pallet_ids:
+            return []
+        domain.append(["id", "in", pallet_ids])
     records = odoo.search_read(
         "alfinf.pallet.out",
         domain,

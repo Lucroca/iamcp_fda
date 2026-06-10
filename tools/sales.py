@@ -116,7 +116,7 @@ def get_sales_summary_by_customer(
     ]
 
 
-def get_top_products(limit: int = 15, seller_id: int = 0, date_from: str = "", date_to: str = "") -> list[dict]:
+def get_top_products(limit: int = 15, seller_id: int = 0, date_from: str = "", date_to: str = "", familia_nombre: str = "") -> list[dict]:
     """Top productos vendidos globalmente (pedidos confirmados), por importe."""
     from datetime import date
     domain = [
@@ -127,21 +127,38 @@ def get_top_products(limit: int = 15, seller_id: int = 0, date_from: str = "", d
         domain.append(("order_id.date_order", "<=", date_to))
     if seller_id:
         domain.append(("order_id.user_id", "=", seller_id))
+    if familia_nombre:
+        domain.append(("family_id.name", "ilike", familia_nombre))
     groups = odoo.read_group(
         model="sale.order.line",
         domain=domain,
-        fields=["product_id", "product_uom_qty:sum", "price_subtotal:sum"],
-        groupby=["product_id"],
+        fields=["product_id", "family_id", "product_uom_qty:sum", "price_subtotal:sum"],
+        groupby=["product_id", "family_id"],
         orderby="price_subtotal desc",
     )
+    seen: dict = {}
+    for g in groups:
+        if not g.get("product_id"):
+            continue
+        prod = g["product_id"][1]
+        if prod not in seen:
+            seen[prod] = {
+                "familia": g["family_id"][1] if g.get("family_id") else "",
+                "qty": 0.0, "revenue": 0.0,
+            }
+        seen[prod]["qty"] += g["product_uom_qty"] or 0
+        seen[prod]["revenue"] += g["price_subtotal"] or 0
     return [
         {
             "posicion": i + 1,
-            "producto": g["product_id"][1] if g["product_id"] else "Sin producto",
-            "cantidad_total": round(g["product_uom_qty"], 2),
-            "importe_total": round(g["price_subtotal"], 2),
+            "producto": prod,
+            "familia": data["familia"],
+            "cantidad_total": round(data["qty"], 2),
+            "importe_total": round(data["revenue"], 2),
         }
-        for i, g in enumerate(groups[:limit])
+        for i, (prod, data) in enumerate(
+            sorted(seen.items(), key=lambda x: x[1]["revenue"], reverse=True)[:limit]
+        )
     ]
 
 
@@ -304,6 +321,7 @@ def get_ventas_kilos_por_producto(
     date_from: str = "",
     date_to: str = "",
     customer_name: str = "",
+    familia_nombre: str = "",
     limit: int = 20,
 ) -> list[dict]:
     from datetime import date as _date
@@ -315,26 +333,40 @@ def get_ventas_kilos_por_producto(
         domain.append(("order_id.date_order", "<=", date_to))
     if customer_name:
         domain.append(("order_partner_id.name", "ilike", customer_name))
+    if familia_nombre:
+        domain.append(("family_id.name", "ilike", familia_nombre))
 
     groups = odoo.read_group(
         model="sale.order.line",
         domain=domain,
-        fields=["product_id", "product_uom_qty:sum", "price_subtotal:sum"],
-        groupby=["product_id"],
+        fields=["product_id", "family_id", "product_uom_qty:sum", "price_subtotal:sum"],
+        groupby=["product_id", "family_id"],
         orderby="product_uom_qty desc",
     )
 
     result = []
-    for g in groups[:limit]:
+    seen_products: dict = {}
+    for g in groups:
         if not g.get("product_id"):
             continue
+        prod = g["product_id"][1]
+        familia = g["family_id"][1] if g.get("family_id") else ""
         qty = g["product_uom_qty"] or 0
         revenue = g["price_subtotal"] or 0
+        if prod not in seen_products:
+            seen_products[prod] = {"familia": familia, "total_kg": 0.0, "total_revenue": 0.0}
+        seen_products[prod]["total_kg"] += qty
+        seen_products[prod]["total_revenue"] += revenue
+
+    for prod, data in sorted(seen_products.items(), key=lambda x: x[1]["total_kg"], reverse=True)[:limit]:
+        qty = data["total_kg"]
+        rev = data["total_revenue"]
         result.append({
-            "producto": g["product_id"][1],
+            "producto": prod,
+            "familia": data["familia"],
             "total_kg": round(qty, 2),
-            "precio_medio_kg": round(revenue / qty, 4) if qty else 0,
-            "importe_total": round(revenue, 2),
+            "precio_medio_kg": round(rev / qty, 4) if qty else 0,
+            "importe_total": round(rev, 2),
         })
     return result
 
