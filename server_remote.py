@@ -19,6 +19,10 @@ from tools.invoices import (
 )
 from tools.purchases import get_compras_precio_por_proveedor
 from tools.families import get_familias_listar
+from tools.trazabilidad import (
+    get_trazabilidad_parcelas, get_trazabilidad_kilos_por_parcela,
+    get_trazabilidad_detalle_parcela,
+)
 from tools.pallets import (
     get_pallets_listar, get_pallets_sin_albaran, get_pallets_con_albaran,
     get_pallet_trazabilidad, get_pallets_entradas_agricultor,
@@ -124,6 +128,24 @@ def ventas_precio_por_cliente(product_name: str, date_from: str = "", date_to: s
 def compras_precio_por_proveedor(product_name: str, date_from: str = "", date_to: str = "") -> list[dict]:
     """Para un producto concreto, compara el precio de cada proveedor (ordenado de menor a mayor)."""
     return get_compras_precio_por_proveedor(product_name=product_name, date_from=date_from, date_to=date_to)
+
+
+@mcp.tool()
+def trazabilidad_parcelas(agricultor_nombre: str = "", finca_nombre: str = "", familia_nombre: str = "") -> list[dict]:
+    """Lista parcelas de trazabilidad con agricultor, finca, variedad, hectáreas y campaña. Filtra por agricultor, finca o familia."""
+    return get_trazabilidad_parcelas(agricultor_nombre=agricultor_nombre, finca_nombre=finca_nombre, familia_nombre=familia_nombre)
+
+
+@mcp.tool()
+def trazabilidad_kilos_por_parcela(date_from: str = "", date_to: str = "", agricultor_nombre: str = "", familia_nombre: str = "", limit: int = 30) -> list[dict]:
+    """Kilos e importe vendidos agrupados por parcela (trazabilidad). Por defecto año en curso."""
+    return get_trazabilidad_kilos_por_parcela(date_from=date_from, date_to=date_to, agricultor_nombre=agricultor_nombre, familia_nombre=familia_nombre, limit=limit)
+
+
+@mcp.tool()
+def trazabilidad_detalle_parcela(trazabilidad: str) -> dict:
+    """Detalle completo de una parcela: agricultor, finca, variedad, todos los pallets y albaranes que han salido de ella."""
+    return get_trazabilidad_detalle_parcela(trazabilidad=trazabilidad)
 
 
 @mcp.tool()

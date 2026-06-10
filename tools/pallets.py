@@ -100,7 +100,7 @@ def get_pallet_trazabilidad(referencia: str) -> dict:
         "alfinf.pallet.out.line",
         [["pallet_id", "=", p["id"]]],
         ["product_id", "family_id", "variety_ids", "farmer_id", "kilos",
-         "box_quantity", "euro_unit", "ammount_euro", "pallet_in_id", "state"],
+         "box_quantity", "euro_unit", "ammount_euro", "pallet_in_id", "analytic_account_id", "state"],
         limit=100,
     )
 
@@ -119,6 +119,7 @@ def get_pallet_trazabilidad(referencia: str) -> dict:
             "familia": l["family_id"][1] if l["family_id"] else "",
             "variedades": variety_names,
             "agricultor": l["farmer_id"][1] if l["farmer_id"] else "",
+            "trazabilidad": l["analytic_account_id"][1] if l.get("analytic_account_id") else "",
             "pallet_entrada": l["pallet_in_id"][1] if l["pallet_in_id"] else "",
             "kilos": l["kilos"],
             "cajas": l["box_quantity"],

@@ -239,6 +239,7 @@ def get_albaran_detalle(referencia: str) -> dict:
         fields=[
             "product_id", "family_id", "variety", "product_uom_qty",
             "product_uom", "price_unit", "discount", "price_subtotal",
+            "distribution_analytic_account_ids",
         ],
         limit=200,
     )
@@ -264,6 +265,7 @@ def get_albaran_detalle(referencia: str) -> dict:
                 "producto": l["product_id"][1] if l["product_id"] else "",
                 "familia": l["family_id"][1] if l["family_id"] else "",
                 "variedad": l["variety"] or "",
+                "trazabilidad": [a[1] for a in l["distribution_analytic_account_ids"]] if l.get("distribution_analytic_account_ids") else [],
                 "cantidad": l["product_uom_qty"],
                 "unidad": l["product_uom"][1] if l["product_uom"] else "",
                 "precio_unit": round(l["price_unit"], 4),
