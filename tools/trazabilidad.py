@@ -32,7 +32,7 @@ def get_trazabilidad_parcelas(
         domain,
         ["name", "partner_id", "farm_id", "plot_id", "family_id", "variety_id",
          "hectares", "eco", "campaign_id", "pallet_account_id"],
-        limit=200,
+        limit=10000,
         order="partner_id asc, name asc",
     )
     return [
@@ -56,7 +56,7 @@ def get_trazabilidad_kilos_por_parcela(
     date_to: str = "",
     agricultor_nombre: str = "",
     familia_nombre: str = "",
-    limit: int = 30,
+    limit: int = 0,
 ) -> list[dict]:
     if not date_from and not date_to:
         date_from = f"{_date.today().year}-01-01"
@@ -76,7 +76,6 @@ def get_trazabilidad_kilos_por_parcela(
             "fields": ["analytic_account_id", "kilos:sum", "ammount_euro:sum", "box_quantity:sum"],
             "groupby": ["analytic_account_id"],
             "orderby": "kilos desc",
-            "limit": limit,
         },
     )
 
@@ -134,7 +133,7 @@ def get_trazabilidad_detalle_parcela(trazabilidad: str) -> dict:
             [["analytic_account_id", "=", account_id]],
             ["pallet_id", "sale_order_name", "sale_order_partner", "sale_order_date",
              "kilos", "box_quantity", "euro_unit", "ammount_euro", "date", "state"],
-            limit=200,
+            limit=10000,
             order="date desc",
         )
         for l in lines:

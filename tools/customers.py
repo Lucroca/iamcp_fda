@@ -85,7 +85,7 @@ def get_customer_stats(customer_name: str) -> dict:
             ("state", "!=", "cancel"),
         ],
         fields=["amount_total", "amount_residual", "state"],
-        limit=200,
+        limit=10000,
     )
 
     total_facturado = sum(i["amount_total"] for i in invoices)
@@ -196,7 +196,7 @@ def get_customers_by_country() -> list[dict]:
 def get_top_customers(
     date_from: str = "",
     date_to: str = "",
-    limit: int = 10,
+    limit: int = 0,
     seller_id: int = 0,
 ) -> list[dict]:
     """
@@ -231,5 +231,5 @@ def get_top_customers(
             "num_pedidos": g["partner_id_count"],
             "total_comprado": round(g["amount_total"], 2),
         }
-        for i, g in enumerate(groups[:limit])
+        for i, g in enumerate(groups if not limit else groups[:limit])
     ]

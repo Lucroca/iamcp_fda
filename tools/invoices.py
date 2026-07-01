@@ -189,7 +189,7 @@ def get_overdue_summary() -> list[dict]:
         model="account.move",
         domain=domain,
         fields=["partner_id", "amount_residual", "invoice_date_due"],
-        limit=500,
+        limit=10000,
     )
 
     resumen: dict[str, dict] = {}

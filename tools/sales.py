@@ -78,7 +78,7 @@ def get_sales_orders(
 def get_sales_summary_by_customer(
     date_from: str = "",
     date_to: str = "",
-    limit: int = 20,
+    limit: int = 0,
     seller_id: int = 0,
 ) -> list[dict]:
     """
@@ -112,11 +112,11 @@ def get_sales_summary_by_customer(
             "num_pedidos": g["partner_id_count"],
             "total_vendido": round(g["amount_total"], 2),
         }
-        for g in groups[:limit]
+        for g in (groups if not limit else groups[:limit])
     ]
 
 
-def get_top_products(limit: int = 15, seller_id: int = 0, date_from: str = "", date_to: str = "", familia_nombre: str = "") -> list[dict]:
+def get_top_products(limit: int = 0, seller_id: int = 0, date_from: str = "", date_to: str = "", familia_nombre: str = "") -> list[dict]:
     """Top productos vendidos globalmente (pedidos confirmados), por importe."""
     from datetime import date
     domain = [
@@ -157,6 +157,7 @@ def get_top_products(limit: int = 15, seller_id: int = 0, date_from: str = "", d
             "importe_total": round(data["revenue"], 2),
         }
         for i, (prod, data) in enumerate(
+            sorted(seen.items(), key=lambda x: x[1]["revenue"], reverse=True) if not limit else
             sorted(seen.items(), key=lambda x: x[1]["revenue"], reverse=True)[:limit]
         )
     ]
@@ -241,7 +242,7 @@ def get_albaran_detalle(referencia: str) -> dict:
             "product_uom", "price_unit", "discount", "price_subtotal",
             "distribution_analytic_account_ids",
         ],
-        limit=200,
+        limit=10000,
     )
 
     return {
@@ -279,7 +280,7 @@ def get_albaran_detalle(referencia: str) -> dict:
 
 def get_top_products_by_customer(
     customer_name: str,
-    limit: int = 10,
+    limit: int = 0,
     date_from: str = "",
     date_to: str = "",
 ) -> list[dict]:
@@ -315,7 +316,7 @@ def get_top_products_by_customer(
             "cantidad_total": round(g["product_uom_qty"], 2),
             "importe_total": round(g["price_subtotal"], 2),
         }
-        for i, g in enumerate(groups[:limit])
+        for i, g in enumerate(groups if not limit else groups[:limit])
     ]
 
 
@@ -324,7 +325,7 @@ def get_ventas_kilos_por_producto(
     date_to: str = "",
     customer_name: str = "",
     familia_nombre: str = "",
-    limit: int = 20,
+    limit: int = 0,
 ) -> list[dict]:
     from datetime import date as _date
     domain: list = [
@@ -360,7 +361,8 @@ def get_ventas_kilos_por_producto(
         seen_products[prod]["total_kg"] += qty
         seen_products[prod]["total_revenue"] += revenue
 
-    for prod, data in sorted(seen_products.items(), key=lambda x: x[1]["total_kg"], reverse=True)[:limit]:
+    items = sorted(seen_products.items(), key=lambda x: x[1]["total_kg"], reverse=True)
+    for prod, data in (items if not limit else items[:limit]):
         qty = data["total_kg"]
         rev = data["total_revenue"]
         result.append({

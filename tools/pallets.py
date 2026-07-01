@@ -156,7 +156,7 @@ def get_pallets_entradas_agricultor(date_from: str = "", date_to: str = "", limi
         orderby="kg_gross desc",
     )
     result = []
-    for r in records[:limit]:
+    for r in (records if not limit else records[:limit]):
         if not r.get("partner_id"):
             continue
         result.append({

@@ -46,8 +46,8 @@ def ventas_listar(state: str = "all", limit: int = 20, date_from: str = "", date
 
 
 @mcp.tool()
-def ventas_resumen_por_cliente(date_from: str = "", date_to: str = "", limit: int = 20) -> list[dict]:
-    """Resumen de albaranes (ventas) agrupado por cliente."""
+def ventas_resumen_por_cliente(date_from: str = "", date_to: str = "", limit: int = 0) -> list[dict]:
+    """Resumen de albaranes (ventas) agrupado por cliente. limit=0 devuelve todos."""
     return get_sales_summary_by_customer(date_from=date_from, date_to=date_to, limit=limit)
 
 
@@ -58,14 +58,14 @@ def ventas_resumen_por_vendedor(date_from: str = "", date_to: str = "") -> list[
 
 
 @mcp.tool()
-def ventas_top_productos(limit: int = 15, date_from: str = "", date_to: str = "", familia_nombre: str = "") -> list[dict]:
-    """Top productos vendidos globalmente con columna familia. Filtra por familia con familia_nombre. Por defecto año en curso."""
+def ventas_top_productos(limit: int = 0, date_from: str = "", date_to: str = "", familia_nombre: str = "") -> list[dict]:
+    """Todos los productos vendidos con importe, cantidad y familia. limit=0 devuelve todos. Por defecto año en curso."""
     return get_top_products(limit=limit, date_from=date_from, date_to=date_to, familia_nombre=familia_nombre)
 
 
 @mcp.tool()
-def ventas_top_productos_cliente(customer_name: str, limit: int = 10, date_from: str = "", date_to: str = "") -> list[dict]:
-    """Productos más vendidos a un cliente concreto. Por defecto muestra el año en curso."""
+def ventas_top_productos_cliente(customer_name: str, limit: int = 0, date_from: str = "", date_to: str = "") -> list[dict]:
+    """Todos los productos vendidos a un cliente concreto. limit=0 devuelve todos. Por defecto año en curso."""
     return get_top_products_by_customer(customer_name=customer_name, limit=limit, date_from=date_from, date_to=date_to)
 
 
@@ -82,8 +82,8 @@ def clientes_estadisticas(customer_name: str) -> dict:
 
 
 @mcp.tool()
-def clientes_top(date_from: str = "", date_to: str = "", limit: int = 10) -> list[dict]:
-    """Ranking de clientes por volumen de compra."""
+def clientes_top(date_from: str = "", date_to: str = "", limit: int = 0) -> list[dict]:
+    """Todos los clientes por volumen de compra. limit=0 devuelve todos."""
     return get_top_customers(date_from=date_from, date_to=date_to, limit=limit)
 
 
@@ -118,8 +118,8 @@ def albaran_detalle(referencia: str) -> dict:
 
 
 @mcp.tool()
-def ventas_kilos_por_producto(date_from: str = "", date_to: str = "", customer_name: str = "", familia_nombre: str = "", limit: int = 20) -> list[dict]:
-    """Top productos por kg vendidos con precio medio real y columna familia. Filtra por familia con familia_nombre."""
+def ventas_kilos_por_producto(date_from: str = "", date_to: str = "", customer_name: str = "", familia_nombre: str = "", limit: int = 0) -> list[dict]:
+    """Todos los productos por kg vendidos con precio medio real y familia. limit=0 devuelve todos."""
     return get_ventas_kilos_por_producto(date_from=date_from, date_to=date_to, customer_name=customer_name, familia_nombre=familia_nombre, limit=limit)
 
 
@@ -142,8 +142,8 @@ def trazabilidad_parcelas(agricultor_nombre: str = "", finca_nombre: str = "", f
 
 
 @mcp.tool()
-def trazabilidad_kilos_por_parcela(date_from: str = "", date_to: str = "", agricultor_nombre: str = "", familia_nombre: str = "", limit: int = 30) -> list[dict]:
-    """Kilos e importe vendidos agrupados por parcela (trazabilidad). Por defecto año en curso."""
+def trazabilidad_kilos_por_parcela(date_from: str = "", date_to: str = "", agricultor_nombre: str = "", familia_nombre: str = "", limit: int = 0) -> list[dict]:
+    """Kilos e importe vendidos por todas las parcelas (trazabilidad). limit=0 devuelve todas. Por defecto año en curso."""
     return get_trazabilidad_kilos_por_parcela(date_from=date_from, date_to=date_to, agricultor_nombre=agricultor_nombre, familia_nombre=familia_nombre, limit=limit)
 
 
@@ -184,8 +184,8 @@ def pallet_trazabilidad(referencia: str) -> dict:
 
 
 @mcp.tool()
-def pallets_entradas_agricultor(date_from: str = "", date_to: str = "", limit: int = 30) -> list[dict]:
-    """Resumen de entradas de pallets agrupado por agricultor (kg bruto, neto, cajas). Por defecto año en curso."""
+def pallets_entradas_agricultor(date_from: str = "", date_to: str = "", limit: int = 0) -> list[dict]:
+    """Entradas de pallets agrupadas por agricultor (todos). limit=0 devuelve todos. Por defecto año en curso."""
     return get_pallets_entradas_agricultor(date_from=date_from, date_to=date_to, limit=limit)
 
 
