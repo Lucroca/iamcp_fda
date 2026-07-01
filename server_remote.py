@@ -33,7 +33,7 @@ from tools.analitica import (
     get_analitica_resumen_por_variedad, get_analitica_resumen_por_parcela,
     get_analitica_detalle_parcela, get_analitica_evolucion_mensual,
     get_analitica_variedad_por_cliente, get_rentabilidad_global,
-    get_analitica_por_pais,
+    get_analitica_por_pais, get_analitica_por_agricultor, get_analitica_por_transportista,
 )
 from tools.invoices import (
     get_invoices, get_revenue_summary,
@@ -269,8 +269,20 @@ def rentabilidad_global(date_from: str = "", date_to: str = "", empresa_nombre: 
 
 @mcp.tool()
 def analitica_por_pais(date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = "") -> list[dict]:
-    """Ventas reales (cuenta analítica) agrupadas por país del cliente: importe, kg, precio medio y número de clientes. Para Frescitrus usa datos reales (no sale.order). Filtra por empresa."""
+    """Ventas reales agrupadas por país de destino (campo destination_country de la línea analítica): importe, kg, precio medio y número de clientes. Filtra por empresa o familia."""
     return get_analitica_por_pais(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, empresa_nombre=empresa_nombre)
+
+
+@mcp.tool()
+def analitica_por_agricultor(date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = "", limit: int = 0) -> list[dict]:
+    """Todos los agricultores con importe y kg vendidos desde sus parcelas (campo farmer_id). Filtra por empresa o familia. limit=0 devuelve todos."""
+    return get_analitica_por_agricultor(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, empresa_nombre=empresa_nombre, limit=limit)
+
+
+@mcp.tool()
+def analitica_por_transportista(date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = "", limit: int = 0) -> list[dict]:
+    """Todos los transportistas con importe y kg transportados. Filtra por empresa o familia. limit=0 devuelve todos."""
+    return get_analitica_por_transportista(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, empresa_nombre=empresa_nombre, limit=limit)
 
 
 @mcp.tool()

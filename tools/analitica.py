@@ -69,34 +69,24 @@ def get_analitica_resumen_por_cliente(
 def get_analitica_por_pais(
     date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = ""
 ) -> list[dict]:
+    """Usa destination_country (campo directo en la línea) para agrupar por país de destino real."""
     date_from, date_to = _default_year(date_from, date_to)
-    groups = odoo.read_group(
+    lines = odoo.search_read(
         "account.analytic.line",
         _domain(date_from, date_to, familia_nombre, empresa_nombre),
-        ["partner_id", "amount:sum", "unit_amount:sum"],
-        ["partner_id"],
-        orderby="amount desc",
+        ["destination_country", "partner_id", "amount", "unit_amount"],
+        limit=0,
     )
 
-    partner_ids = [g["partner_id"][0] for g in groups if g.get("partner_id")]
-    country_map: dict = {}
-    if partner_ids:
-        partners = odoo.search_read(
-            "res.partner", [["id", "in", partner_ids]],
-            ["id", "country_id"], limit=_BIG,
-        )
-        country_map = {p["id"]: (p["country_id"][1] if p["country_id"] else "Sin país") for p in partners}
-
     by_country: dict = {}
-    for g in groups:
-        if not g.get("partner_id"):
-            continue
-        pais = country_map.get(g["partner_id"][0], "Sin país")
+    for l in lines:
+        pais = l.get("destination_country") or "Sin país"
         if pais not in by_country:
-            by_country[pais] = {"importe_eur": 0.0, "kg": 0.0, "num_clientes": 0}
-        by_country[pais]["importe_eur"] += g["amount"] or 0
-        by_country[pais]["kg"] += g["unit_amount"] or 0
-        by_country[pais]["num_clientes"] += 1
+            by_country[pais] = {"importe_eur": 0.0, "kg": 0.0, "clientes": set()}
+        by_country[pais]["importe_eur"] += l["amount"] or 0
+        by_country[pais]["kg"] += l["unit_amount"] or 0
+        if l.get("partner_id"):
+            by_country[pais]["clientes"].add(l["partner_id"][0])
 
     return sorted(
         [
@@ -105,7 +95,7 @@ def get_analitica_por_pais(
                 "importe_eur": round(d["importe_eur"], 2),
                 "kg": round(d["kg"], 2),
                 "precio_medio_kg": _precio(d["importe_eur"], d["kg"]),
-                "num_clientes": d["num_clientes"],
+                "num_clientes": len(d["clientes"]),
             }
             for pais, d in by_country.items()
         ],
@@ -193,40 +183,62 @@ def get_analitica_detalle_parcela(trazabilidad: str) -> dict:
     lines = odoo.search_read(
         "account.analytic.line",
         [["trace_id", "=", t["id"]], ["category", "=", "invoice"]],
-        ["name", "date", "partner_id", "sale_order_id", "invoice_number", "invoice_date",
-         "pallet_number", "pallet_date", "pallet_line_id",
-         "product_id", "family_id", "farm_id", "plot_id", "variety_id",
-         "unit_amount", "price_unit", "amount", "loss_gain"],
+        [
+            "name", "date", "invoice_date", "delivery_date", "entry_date", "pallet_date",
+            "partner_id", "farmer_id", "transport_company", "operating_unit_id",
+            "sale_order_id", "delivery_number", "invoice_number",
+            "move_id", "move_line_id",
+            "pallet_number", "pallet_id", "pallet_line_id",
+            "product_id", "family_id", "farm_id", "plot_id", "variety_id",
+            "unit_amount", "box_quantity", "price_unit", "price_unit_ref",
+            "amount", "amount_ref", "loss_gain", "transport_expenses",
+            "destination_country", "company_id",
+            "general_account_id", "journal_id",
+        ],
         limit=_BIG,
         order="date asc",
     )
 
-    movimientos = [
-        {
+    movimientos = []
+    for l in lines:
+        movimientos.append({
             "nombre": l["name"] or "",
-            "fecha": l["date"],
-            "cliente": l["partner_id"][1] if l["partner_id"] else "",
-            "albaran": l["sale_order_id"][1] if l["sale_order_id"] else "",
-            "factura": l["invoice_number"] or "",
+            "fecha": l["date"] or "",
             "fecha_factura": l["invoice_date"] or "",
-            "pallet": l["pallet_number"] or "",
+            "fecha_entrega": l["delivery_date"] or "",
+            "fecha_entrada": l["entry_date"] or "",
             "fecha_pallet": l["pallet_date"] or "",
-            "linea_pallet": l["pallet_line_id"][1] if l["pallet_line_id"] else "",
+            "cliente": l["partner_id"][1] if l["partner_id"] else "",
+            "agricultor": l["farmer_id"][1] if l["farmer_id"] else "",
+            "transportista": l["transport_company"][1] if l["transport_company"] else "",
+            "unidad_operativa": l["operating_unit_id"][1] if l["operating_unit_id"] else "",
+            "empresa": l["company_id"][1] if l["company_id"] else "",
+            "albaran": l["sale_order_id"][1] if l["sale_order_id"] else "",
+            "num_entrega": l["delivery_number"] or "",
+            "factura": l["invoice_number"] or "",
+            "asiento": l["move_id"][1] if l["move_id"] else "",
+            "pallet": l["pallet_number"] or "",
             "producto": l["product_id"][1] if l["product_id"] else "",
             "familia": l["family_id"][1] if l["family_id"] else "",
             "finca": l["farm_id"][1] if l["farm_id"] else "",
             "parcela": l["plot_id"][1] if l["plot_id"] else "",
             "variedad": l["variety_id"][1] if l["variety_id"] else "",
-            "kg": l["unit_amount"],
-            "precio_kg": l["price_unit"],
-            "importe_eur": round(l["amount"], 2),
-            "perdida_ganancia": l["loss_gain"],
-        }
-        for l in lines
-    ]
+            "pais_destino": l["destination_country"] or "",
+            "kg": l["unit_amount"] or 0,
+            "cajas": l["box_quantity"] or 0,
+            "precio_kg": round(l["price_unit"] or 0, 4),
+            "precio_kg_ref": round(l["price_unit_ref"] or 0, 4),
+            "importe_eur": round(l["amount"] or 0, 2),
+            "importe_ref": round(l["amount_ref"] or 0, 2),
+            "perdida_ganancia": round(l["loss_gain"] or 0, 2),
+            "gastos_transporte": round(l["transport_expenses"] or 0, 2),
+            "cuenta_contable": l["general_account_id"][1] if l["general_account_id"] else "",
+            "diario": l["journal_id"][1] if l["journal_id"] else "",
+        })
 
     total_kg = sum(m["kg"] for m in movimientos)
     total_eur = sum(m["importe_eur"] for m in movimientos)
+    total_cajas = sum(m["cajas"] for m in movimientos)
 
     return {
         "trazabilidad": t["name"],
@@ -236,6 +248,7 @@ def get_analitica_detalle_parcela(trazabilidad: str) -> dict:
         "familia": t["family_id"][1] if t["family_id"] else "",
         "variedad": t["variety_id"][1] if t["variety_id"] else "",
         "total_kg": round(total_kg, 2),
+        "total_cajas": round(total_cajas, 0),
         "total_eur": round(total_eur, 2),
         "precio_medio_kg": _precio(total_eur, total_kg),
         "num_movimientos": len(movimientos),
@@ -360,6 +373,60 @@ def get_analitica_variedad_por_cliente(
         imp = g["amount"] or 0
         result.append({
             "cliente": g["partner_id"][1],
+            "importe_eur": round(imp, 2),
+            "kg": round(kg, 2),
+            "precio_medio_kg": _precio(imp, kg),
+        })
+    return result
+
+
+def get_analitica_por_agricultor(
+    date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = "", limit: int = 0
+) -> list[dict]:
+    date_from, date_to = _default_year(date_from, date_to)
+    groups = odoo.read_group(
+        "account.analytic.line",
+        _domain(date_from, date_to, familia_nombre, empresa_nombre),
+        ["farmer_id", "amount:sum", "unit_amount:sum"],
+        ["farmer_id"],
+        orderby="amount desc",
+    )
+    rows = groups if not limit else groups[:limit]
+    result = []
+    for g in rows:
+        if not g.get("farmer_id"):
+            continue
+        kg = g["unit_amount"] or 0
+        imp = g["amount"] or 0
+        result.append({
+            "agricultor": g["farmer_id"][1],
+            "importe_eur": round(imp, 2),
+            "kg": round(kg, 2),
+            "precio_medio_kg": _precio(imp, kg),
+        })
+    return result
+
+
+def get_analitica_por_transportista(
+    date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = "", limit: int = 0
+) -> list[dict]:
+    date_from, date_to = _default_year(date_from, date_to)
+    groups = odoo.read_group(
+        "account.analytic.line",
+        _domain(date_from, date_to, familia_nombre, empresa_nombre),
+        ["transport_company", "amount:sum", "unit_amount:sum"],
+        ["transport_company"],
+        orderby="amount desc",
+    )
+    rows = groups if not limit else groups[:limit]
+    result = []
+    for g in rows:
+        if not g.get("transport_company"):
+            continue
+        kg = g["unit_amount"] or 0
+        imp = g["amount"] or 0
+        result.append({
+            "transportista": g["transport_company"][1],
             "importe_eur": round(imp, 2),
             "kg": round(kg, 2),
             "precio_medio_kg": _precio(imp, kg),
