@@ -28,6 +28,10 @@ from tools.pallets import (
     get_pallet_trazabilidad, get_pallets_entradas_agricultor,
     get_pallets_stock,
 )
+from tools.analitica import (
+    get_analitica_resumen_por_cliente, get_analitica_resumen_por_finca,
+    get_analitica_resumen_por_variedad, get_analitica_resumen_por_parcela,
+)
 
 mcp = FastMCP("Odoo 18 — Fruta de Andalucía",
               host="0.0.0.0",
@@ -188,6 +192,30 @@ def pallets_entradas_agricultor(date_from: str = "", date_to: str = "", limit: i
 def pallets_stock(agricultor_name: str = "") -> list[dict]:
     """Stock actual de pallets de entrada pendientes de procesar. Filtra opcionalmente por nombre de agricultor."""
     return get_pallets_stock(agricultor_name=agricultor_name)
+
+
+@mcp.tool()
+def analitica_por_cliente(date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 20) -> list[dict]:
+    """Ranking de clientes por importe y kg vendidos (cuenta analítica). Por defecto año en curso."""
+    return get_analitica_resumen_por_cliente(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, limit=limit)
+
+
+@mcp.tool()
+def analitica_por_finca(date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 20) -> list[dict]:
+    """Ranking de fincas por importe y kg procesados (cuenta analítica). Por defecto año en curso."""
+    return get_analitica_resumen_por_finca(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, limit=limit)
+
+
+@mcp.tool()
+def analitica_por_variedad(date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 20) -> list[dict]:
+    """Ranking de variedades por importe y kg con precio medio. Por defecto año en curso."""
+    return get_analitica_resumen_por_variedad(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, limit=limit)
+
+
+@mcp.tool()
+def analitica_por_parcela(date_from: str = "", date_to: str = "", agricultor_nombre: str = "", familia_nombre: str = "", limit: int = 30) -> list[dict]:
+    """Importe y kg agrupados por parcela de trazabilidad con agricultor, finca y variedad. Por defecto año en curso."""
+    return get_analitica_resumen_por_parcela(date_from=date_from, date_to=date_to, agricultor_nombre=agricultor_nombre, familia_nombre=familia_nombre, limit=limit)
 
 
 if __name__ == "__main__":
