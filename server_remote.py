@@ -31,6 +31,7 @@ from tools.pallets import (
 from tools.analitica import (
     get_analitica_resumen_por_cliente, get_analitica_resumen_por_finca,
     get_analitica_resumen_por_variedad, get_analitica_resumen_por_parcela,
+    get_analitica_detalle_parcela,
 )
 
 mcp = FastMCP("Odoo 18 — Fruta de Andalucía",
@@ -216,6 +217,12 @@ def analitica_por_variedad(date_from: str = "", date_to: str = "", familia_nombr
 def analitica_por_parcela(date_from: str = "", date_to: str = "", agricultor_nombre: str = "", familia_nombre: str = "", limit: int = 30) -> list[dict]:
     """Importe y kg agrupados por parcela de trazabilidad con agricultor, finca y variedad. Por defecto año en curso."""
     return get_analitica_resumen_por_parcela(date_from=date_from, date_to=date_to, agricultor_nombre=agricultor_nombre, familia_nombre=familia_nombre, limit=limit)
+
+
+@mcp.tool()
+def analitica_detalle_parcela(trazabilidad: str) -> dict:
+    """Detalle completo de una parcela: agricultor, finca, variedad, y todos los movimientos individuales con cliente, albarán, factura, pallet, kg e importe."""
+    return get_analitica_detalle_parcela(trazabilidad=trazabilidad)
 
 
 if __name__ == "__main__":

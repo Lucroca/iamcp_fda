@@ -114,6 +114,80 @@ def get_analitica_resumen_por_variedad(
     return result
 
 
+def get_analitica_detalle_parcela(trazabilidad: str) -> dict:
+    traces = odoo.search_read(
+        "alfinf.trace",
+        [["name", "=", trazabilidad]],
+        ["name", "partner_id", "farm_id", "plot_id", "family_id", "variety_id"],
+        limit=1,
+    )
+    if not traces:
+        return {"error": f"Parcela '{trazabilidad}' no encontrada"}
+    t = traces[0]
+
+    lines = odoo.search_read(
+        "account.analytic.line",
+        [["trace_id", "=", t["id"]], ["category", "=", "invoice"]],
+        ["name", "date", "partner_id", "sale_order_id", "invoice_number", "invoice_date",
+         "pallet_number", "pallet_date", "pallet_line_id",
+         "product_id", "family_id", "farm_id", "plot_id", "variety_id",
+         "unit_amount", "price_unit", "amount", "loss_gain"],
+        limit=500,
+        order="date asc",
+    )
+
+    movimientos = [
+        {
+            "nombre": l["name"] or "",
+            "fecha": l["date"],
+            "cliente": l["partner_id"][1] if l["partner_id"] else "",
+            "albaran": l["sale_order_id"][1] if l["sale_order_id"] else "",
+            "factura": l["invoice_number"] or "",
+            "fecha_factura": l["invoice_date"] or "",
+            "pallet": l["pallet_number"] or "",
+            "fecha_pallet": l["pallet_date"] or "",
+            "linea_pallet": l["pallet_line_id"][1] if l["pallet_line_id"] else "",
+            "producto": l["product_id"][1] if l["product_id"] else "",
+            "familia": l["family_id"][1] if l["family_id"] else "",
+            "finca": l["farm_id"][1] if l["farm_id"] else "",
+            "parcela": l["plot_id"][1] if l["plot_id"] else "",
+            "variedad": l["variety_id"][1] if l["variety_id"] else "",
+            "kg": l["unit_amount"],
+            "precio_kg": l["price_unit"],
+            "importe_eur": round(l["amount"], 2),
+            "perdida_ganancia": l["loss_gain"],
+        }
+        for l in lines
+    ]
+
+    # Totales exactos via read_group (independiente del límite de líneas)
+    totales = odoo.read_group(
+        "account.analytic.line",
+        [["trace_id", "=", t["id"]], ["category", "=", "invoice"]],
+        ["amount:sum", "unit_amount:sum"],
+        [],
+    )
+    total_kg = totales[0]["unit_amount"] if totales else 0
+    total_eur = totales[0]["amount"] if totales else 0
+    total_lineas = odoo.search_count("account.analytic.line",
+                                     [["trace_id", "=", t["id"]], ["category", "=", "invoice"]])
+
+    return {
+        "trazabilidad": t["name"],
+        "agricultor": t["partner_id"][1] if t["partner_id"] else "",
+        "finca": t["farm_id"][1] if t["farm_id"] else "",
+        "parcela": t["plot_id"][1] if t["plot_id"] else "",
+        "familia": t["family_id"][1] if t["family_id"] else "",
+        "variedad": t["variety_id"][1] if t["variety_id"] else "",
+        "total_kg": round(total_kg, 2),
+        "total_eur": round(total_eur, 2),
+        "precio_medio_kg": round(total_eur / total_kg, 4) if total_kg else 0,
+        "num_movimientos": total_lineas,
+        "movimientos_mostrados": len(movimientos),
+        "movimientos": movimientos,
+    }
+
+
 def get_analitica_resumen_por_parcela(
     date_from: str = "",
     date_to: str = "",
