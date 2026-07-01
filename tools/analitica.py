@@ -1,6 +1,8 @@
 from odoo_client import odoo
 from datetime import date
 
+_BIG = 10000
+
 
 def _default_year(date_from: str, date_to: str):
     if not date_from and not date_to:
@@ -24,7 +26,7 @@ def _precio(importe: float, kg: float) -> float:
 
 
 def get_analitica_resumen_por_cliente(
-    date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 20
+    date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 0
 ) -> list[dict]:
     date_from, date_to = _default_year(date_from, date_to)
     groups = odoo.read_group(
@@ -34,8 +36,9 @@ def get_analitica_resumen_por_cliente(
         ["partner_id"],
         orderby="amount desc",
     )
+    rows = groups if not limit else groups[:limit]
     result = []
-    for g in groups[:limit]:
+    for g in rows:
         if not g.get("partner_id"):
             continue
         kg = g["unit_amount"] or 0
@@ -50,7 +53,7 @@ def get_analitica_resumen_por_cliente(
 
 
 def get_analitica_resumen_por_finca(
-    date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 20
+    date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 0
 ) -> list[dict]:
     date_from, date_to = _default_year(date_from, date_to)
     groups = odoo.read_group(
@@ -60,8 +63,9 @@ def get_analitica_resumen_por_finca(
         ["farm_id"],
         orderby="amount desc",
     )
+    rows = groups if not limit else groups[:limit]
     result = []
-    for g in groups[:limit]:
+    for g in rows:
         if not g.get("farm_id"):
             continue
         kg = g["unit_amount"] or 0
@@ -76,7 +80,7 @@ def get_analitica_resumen_por_finca(
 
 
 def get_analitica_resumen_por_variedad(
-    date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 20
+    date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 0
 ) -> list[dict]:
     date_from, date_to = _default_year(date_from, date_to)
     groups = odoo.read_group(
@@ -86,22 +90,22 @@ def get_analitica_resumen_por_variedad(
         ["variety_id"],
         orderby="amount desc",
     )
-    # Enrich with family name via alfinf.variety
-    var_ids = [g["variety_id"][0] for g in groups if g.get("variety_id")]
+    rows = groups if not limit else groups[:limit]
+
+    var_ids = [g["variety_id"][0] for g in rows if g.get("variety_id")]
     var_map: dict = {}
     if var_ids:
         varieties = odoo.search_read(
-            "alfinf.variety", [["id", "in", var_ids[:limit]]],
-            ["name", "family_id"], limit=limit,
+            "alfinf.variety", [["id", "in", var_ids]],
+            ["name", "family_id"], limit=_BIG,
         )
         var_map = {v["id"]: v for v in varieties}
 
     result = []
-    for g in groups[:limit]:
+    for g in rows:
         if not g.get("variety_id"):
             continue
-        vid = g["variety_id"][0]
-        v = var_map.get(vid, {})
+        v = var_map.get(g["variety_id"][0], {})
         kg = g["unit_amount"] or 0
         imp = g["amount"] or 0
         result.append({
@@ -132,7 +136,7 @@ def get_analitica_detalle_parcela(trazabilidad: str) -> dict:
          "pallet_number", "pallet_date", "pallet_line_id",
          "product_id", "family_id", "farm_id", "plot_id", "variety_id",
          "unit_amount", "price_unit", "amount", "loss_gain"],
-        limit=500,
+        limit=_BIG,
         order="date asc",
     )
 
@@ -160,17 +164,8 @@ def get_analitica_detalle_parcela(trazabilidad: str) -> dict:
         for l in lines
     ]
 
-    # Totales exactos via read_group (independiente del límite de líneas)
-    totales = odoo.read_group(
-        "account.analytic.line",
-        [["trace_id", "=", t["id"]], ["category", "=", "invoice"]],
-        ["amount:sum", "unit_amount:sum"],
-        [],
-    )
-    total_kg = totales[0]["unit_amount"] if totales else 0
-    total_eur = totales[0]["amount"] if totales else 0
-    total_lineas = odoo.search_count("account.analytic.line",
-                                     [["trace_id", "=", t["id"]], ["category", "=", "invoice"]])
+    total_kg = sum(m["kg"] for m in movimientos)
+    total_eur = sum(m["importe_eur"] for m in movimientos)
 
     return {
         "trazabilidad": t["name"],
@@ -181,9 +176,8 @@ def get_analitica_detalle_parcela(trazabilidad: str) -> dict:
         "variedad": t["variety_id"][1] if t["variety_id"] else "",
         "total_kg": round(total_kg, 2),
         "total_eur": round(total_eur, 2),
-        "precio_medio_kg": round(total_eur / total_kg, 4) if total_kg else 0,
-        "num_movimientos": total_lineas,
-        "movimientos_mostrados": len(movimientos),
+        "precio_medio_kg": _precio(total_eur, total_kg),
+        "num_movimientos": len(movimientos),
         "movimientos": movimientos,
     }
 
@@ -193,7 +187,7 @@ def get_analitica_resumen_por_parcela(
     date_to: str = "",
     agricultor_nombre: str = "",
     familia_nombre: str = "",
-    limit: int = 30,
+    limit: int = 0,
 ) -> list[dict]:
     date_from, date_to = _default_year(date_from, date_to)
     domain = _domain(date_from, date_to, familia_nombre)
@@ -202,7 +196,7 @@ def get_analitica_resumen_por_parcela(
         traces_filter = odoo.search_read(
             "alfinf.trace",
             [["partner_id.name", "ilike", agricultor_nombre]],
-            ["id"], limit=500,
+            ["id"], limit=_BIG,
         )
         if not traces_filter:
             return []
@@ -215,25 +209,24 @@ def get_analitica_resumen_por_parcela(
         ["trace_id"],
         orderby="amount desc",
     )
+    rows = groups if not limit else groups[:limit]
 
-    # Enrich with alfinf.trace: agricultor, finca, familia, variedad
-    trace_ids = [g["trace_id"][0] for g in groups[:limit] if g.get("trace_id")]
+    trace_ids = [g["trace_id"][0] for g in rows if g.get("trace_id")]
     trace_map: dict = {}
     if trace_ids:
         traces = odoo.search_read(
             "alfinf.trace",
             [["id", "in", trace_ids]],
             ["name", "partner_id", "farm_id", "family_id", "variety_id"],
-            limit=limit,
+            limit=_BIG,
         )
         trace_map = {t["id"]: t for t in traces}
 
     result = []
-    for g in groups[:limit]:
+    for g in rows:
         if not g.get("trace_id"):
             continue
-        tid = g["trace_id"][0]
-        t = trace_map.get(tid, {})
+        t = trace_map.get(g["trace_id"][0], {})
         kg = g["unit_amount"] or 0
         imp = g["amount"] or 0
         result.append({

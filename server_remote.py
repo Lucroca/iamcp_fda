@@ -196,26 +196,26 @@ def pallets_stock(agricultor_name: str = "") -> list[dict]:
 
 
 @mcp.tool()
-def analitica_por_cliente(date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 20) -> list[dict]:
-    """Ranking de clientes por importe y kg vendidos (cuenta analítica). Por defecto año en curso."""
+def analitica_por_cliente(date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 0) -> list[dict]:
+    """Todos los clientes con importe y kg vendidos. limit=0 devuelve todos. Por defecto año en curso."""
     return get_analitica_resumen_por_cliente(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, limit=limit)
 
 
 @mcp.tool()
-def analitica_por_finca(date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 20) -> list[dict]:
-    """Ranking de fincas por importe y kg procesados (cuenta analítica). Por defecto año en curso."""
+def analitica_por_finca(date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 0) -> list[dict]:
+    """Todas las fincas con importe y kg procesados. limit=0 devuelve todas. Por defecto año en curso."""
     return get_analitica_resumen_por_finca(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, limit=limit)
 
 
 @mcp.tool()
-def analitica_por_variedad(date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 20) -> list[dict]:
-    """Ranking de variedades por importe y kg con precio medio. Por defecto año en curso."""
+def analitica_por_variedad(date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 0) -> list[dict]:
+    """Todas las variedades con importe, kg y precio medio. limit=0 devuelve todas. Por defecto año en curso."""
     return get_analitica_resumen_por_variedad(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, limit=limit)
 
 
 @mcp.tool()
-def analitica_por_parcela(date_from: str = "", date_to: str = "", agricultor_nombre: str = "", familia_nombre: str = "", limit: int = 30) -> list[dict]:
-    """Importe y kg agrupados por parcela de trazabilidad con agricultor, finca y variedad. Por defecto año en curso."""
+def analitica_por_parcela(date_from: str = "", date_to: str = "", agricultor_nombre: str = "", familia_nombre: str = "", limit: int = 0) -> list[dict]:
+    """Todas las parcelas con importe y kg por trazabilidad. limit=0 devuelve todas. Por defecto año en curso."""
     return get_analitica_resumen_por_parcela(date_from=date_from, date_to=date_to, agricultor_nombre=agricultor_nombre, familia_nombre=familia_nombre, limit=limit)
 
 
