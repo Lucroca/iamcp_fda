@@ -28,7 +28,7 @@ from tools.analitica import (
     get_analitica_resumen_por_cliente, get_analitica_resumen_por_finca,
     get_analitica_resumen_por_variedad, get_analitica_resumen_por_parcela,
     get_analitica_detalle_parcela, get_analitica_evolucion_mensual,
-    get_analitica_variedad_por_cliente,
+    get_analitica_variedad_por_cliente, get_rentabilidad_global,
 )
 from tools.invoices import (
     get_invoices, get_revenue_summary,
@@ -197,26 +197,26 @@ def pallets_stock(agricultor_name: str = "") -> list[dict]:
 
 
 @mcp.tool()
-def analitica_por_cliente(date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 0) -> list[dict]:
-    """Todos los clientes con importe y kg vendidos. limit=0 devuelve todos. Por defecto año en curso."""
-    return get_analitica_resumen_por_cliente(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, limit=limit)
+def analitica_por_cliente(date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = "", limit: int = 0) -> list[dict]:
+    """Todos los clientes con importe y kg vendidos. Filtra por empresa (FRESCITRUS, DOÑANA BUS). Por defecto año en curso."""
+    return get_analitica_resumen_por_cliente(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, empresa_nombre=empresa_nombre, limit=limit)
 
 
 @mcp.tool()
-def analitica_por_finca(date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 0) -> list[dict]:
-    """Todas las fincas con importe y kg procesados. limit=0 devuelve todas. Por defecto año en curso."""
-    return get_analitica_resumen_por_finca(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, limit=limit)
+def analitica_por_finca(date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = "", limit: int = 0) -> list[dict]:
+    """Todas las fincas con importe y kg procesados. Filtra por empresa. Por defecto año en curso."""
+    return get_analitica_resumen_por_finca(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, empresa_nombre=empresa_nombre, limit=limit)
 
 
 @mcp.tool()
-def analitica_por_variedad(date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 0) -> list[dict]:
-    """Todas las variedades con importe, kg y precio medio. limit=0 devuelve todas. Por defecto año en curso."""
-    return get_analitica_resumen_por_variedad(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, limit=limit)
+def analitica_por_variedad(date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = "", limit: int = 0) -> list[dict]:
+    """Todas las variedades con importe, kg y precio medio. Filtra por empresa. Por defecto año en curso."""
+    return get_analitica_resumen_por_variedad(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, empresa_nombre=empresa_nombre, limit=limit)
 
 
 @mcp.tool()
-def analitica_por_parcela(date_from: str = "", date_to: str = "", agricultor_nombre: str = "", familia_nombre: str = "", limit: int = 0) -> list[dict]:
-    """Todas las parcelas con importe y kg por trazabilidad. limit=0 devuelve todas. Por defecto año en curso."""
+def analitica_por_parcela(date_from: str = "", date_to: str = "", agricultor_nombre: str = "", familia_nombre: str = "", empresa_nombre: str = "", limit: int = 0) -> list[dict]:
+    """Todas las parcelas con importe y kg por trazabilidad. Filtra por empresa. Por defecto año en curso."""
     return get_analitica_resumen_por_parcela(date_from=date_from, date_to=date_to, agricultor_nombre=agricultor_nombre, familia_nombre=familia_nombre, limit=limit)
 
 
@@ -227,15 +227,21 @@ def analitica_detalle_parcela(trazabilidad: str) -> dict:
 
 
 @mcp.tool()
-def analitica_evolucion_mensual(date_from: str = "", date_to: str = "", familia_nombre: str = "") -> list[dict]:
-    """Evolución mensual de importe, kg y precio medio. Por defecto año en curso. Filtra por familia."""
-    return get_analitica_evolucion_mensual(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre)
+def analitica_evolucion_mensual(date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = "") -> list[dict]:
+    """Evolución mensual de importe, kg y precio medio. Filtra por familia o empresa. Por defecto año en curso."""
+    return get_analitica_evolucion_mensual(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, empresa_nombre=empresa_nombre)
 
 
 @mcp.tool()
-def analitica_variedad_por_cliente(variedad_nombre: str, date_from: str = "", date_to: str = "") -> list[dict]:
-    """Para una variedad concreta, qué clientes la compran, cuántos kg y a qué precio medio. Por defecto año en curso."""
-    return get_analitica_variedad_por_cliente(variedad_nombre=variedad_nombre, date_from=date_from, date_to=date_to)
+def analitica_variedad_por_cliente(variedad_nombre: str, date_from: str = "", date_to: str = "", empresa_nombre: str = "") -> list[dict]:
+    """Para una variedad concreta, qué clientes la compran, cuántos kg y a qué precio medio. Filtra por empresa."""
+    return get_analitica_variedad_por_cliente(variedad_nombre=variedad_nombre, date_from=date_from, date_to=date_to, empresa_nombre=empresa_nombre)
+
+
+@mcp.tool()
+def rentabilidad_global(date_from: str = "", date_to: str = "", empresa_nombre: str = "") -> dict:
+    """Rentabilidad real: ingresos de venta vs coste de liquidación al agricultor. Margen bruto por familia y global. Filtra por empresa (FRESCITRUS, DOÑANA BUS)."""
+    return get_rentabilidad_global(date_from=date_from, date_to=date_to, empresa_nombre=empresa_nombre)
 
 
 @mcp.tool()

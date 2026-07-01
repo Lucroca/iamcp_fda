@@ -10,7 +10,7 @@ def _default_year(date_from: str, date_to: str):
     return date_from, date_to
 
 
-def _domain(date_from: str, date_to: str, familia_nombre: str = "") -> list:
+def _domain(date_from: str, date_to: str, familia_nombre: str = "", empresa_nombre: str = "") -> list:
     domain: list = [["category", "=", "invoice"]]
     if date_from:
         domain.append(["date", ">=", date_from])
@@ -18,6 +18,8 @@ def _domain(date_from: str, date_to: str, familia_nombre: str = "") -> list:
         domain.append(["date", "<=", date_to])
     if familia_nombre:
         domain.append(["family_id.name", "ilike", familia_nombre])
+    if empresa_nombre:
+        domain.append(["company_id.name", "ilike", empresa_nombre])
     return domain
 
 
@@ -26,12 +28,12 @@ def _precio(importe: float, kg: float) -> float:
 
 
 def get_analitica_resumen_por_cliente(
-    date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 0
+    date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = "", limit: int = 0
 ) -> list[dict]:
     date_from, date_to = _default_year(date_from, date_to)
     groups = odoo.read_group(
         "account.analytic.line",
-        _domain(date_from, date_to, familia_nombre),
+        _domain(date_from, date_to, familia_nombre, empresa_nombre),
         ["partner_id", "amount:sum", "unit_amount:sum"],
         ["partner_id"],
         orderby="amount desc",
@@ -53,12 +55,12 @@ def get_analitica_resumen_por_cliente(
 
 
 def get_analitica_resumen_por_finca(
-    date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 0
+    date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = "", limit: int = 0
 ) -> list[dict]:
     date_from, date_to = _default_year(date_from, date_to)
     groups = odoo.read_group(
         "account.analytic.line",
-        _domain(date_from, date_to, familia_nombre),
+        _domain(date_from, date_to, familia_nombre, empresa_nombre),
         ["farm_id", "amount:sum", "unit_amount:sum"],
         ["farm_id"],
         orderby="amount desc",
@@ -80,12 +82,12 @@ def get_analitica_resumen_por_finca(
 
 
 def get_analitica_resumen_por_variedad(
-    date_from: str = "", date_to: str = "", familia_nombre: str = "", limit: int = 0
+    date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = "", limit: int = 0
 ) -> list[dict]:
     date_from, date_to = _default_year(date_from, date_to)
     groups = odoo.read_group(
         "account.analytic.line",
-        _domain(date_from, date_to, familia_nombre),
+        _domain(date_from, date_to, familia_nombre, empresa_nombre),
         ["variety_id", "amount:sum", "unit_amount:sum"],
         ["variety_id"],
         orderby="amount desc",
@@ -246,11 +248,12 @@ def get_analitica_evolucion_mensual(
     date_from: str = "",
     date_to: str = "",
     familia_nombre: str = "",
+    empresa_nombre: str = "",
 ) -> list[dict]:
     date_from, date_to = _default_year(date_from, date_to)
     lines = odoo.search_read(
         "account.analytic.line",
-        _domain(date_from, date_to, familia_nombre),
+        _domain(date_from, date_to, familia_nombre, empresa_nombre),
         ["date", "amount", "unit_amount"],
         limit=_BIG,
     )
@@ -277,9 +280,10 @@ def get_analitica_variedad_por_cliente(
     variedad_nombre: str,
     date_from: str = "",
     date_to: str = "",
+    empresa_nombre: str = "",
 ) -> list[dict]:
     date_from, date_to = _default_year(date_from, date_to)
-    domain = _domain(date_from, date_to)
+    domain = _domain(date_from, date_to, empresa_nombre=empresa_nombre)
     domain.append(["variety_id.name", "ilike", variedad_nombre])
 
     groups = odoo.read_group(
@@ -302,3 +306,95 @@ def get_analitica_variedad_por_cliente(
             "precio_medio_kg": _precio(imp, kg),
         })
     return result
+
+
+def get_rentabilidad_global(
+    date_from: str = "",
+    date_to: str = "",
+    empresa_nombre: str = "",
+) -> dict:
+    date_from, date_to = _default_year(date_from, date_to)
+
+    # Ingresos: account.analytic.line (ventas facturadas)
+    ing_groups = odoo.read_group(
+        "account.analytic.line",
+        _domain(date_from, date_to, empresa_nombre=empresa_nombre),
+        ["family_id", "amount:sum", "unit_amount:sum"],
+        ["family_id"],
+        orderby="amount desc",
+    )
+
+    # Costes: facturas de compra (liquidación al agricultor)
+    cost_domain: list = [
+        ["move_id.move_type", "=", "in_invoice"],
+        ["move_id.state", "=", "posted"],
+        ["display_type", "=", "product"],
+    ]
+    if date_from:
+        cost_domain.append(["move_id.invoice_date", ">=", date_from])
+    if date_to:
+        cost_domain.append(["move_id.invoice_date", "<=", date_to])
+    if empresa_nombre:
+        cost_domain.append(["company_id.name", "ilike", empresa_nombre])
+
+    cost_groups = odoo.read_group(
+        "account.move.line",
+        cost_domain,
+        ["family_id", "price_subtotal:sum", "quantity:sum"],
+        ["family_id"],
+        orderby="price_subtotal desc",
+    )
+
+    # Construir mapa costes por familia
+    coste_por_familia: dict = {}
+    for g in cost_groups:
+        if g.get("family_id"):
+            nombre = g["family_id"][1]
+            coste_por_familia[nombre] = {
+                "coste_eur": round(g["price_subtotal"] or 0, 2),
+                "kg_compra": round(g["quantity"] or 0, 2),
+            }
+
+    # Construir resultado por familia
+    familias = []
+    total_ingresos = 0.0
+    total_costes = 0.0
+    total_kg = 0.0
+
+    for g in ing_groups:
+        familia = g["family_id"][1] if g.get("family_id") else "Sin familia"
+        ing = g["amount"] or 0
+        kg = g["unit_amount"] or 0
+        coste_data = coste_por_familia.get(familia, {})
+        coste = coste_data.get("coste_eur", 0)
+        margen = ing - coste
+        margen_pct = round(margen / ing * 100, 2) if ing else 0
+
+        total_ingresos += ing
+        total_costes += coste
+        total_kg += kg
+
+        familias.append({
+            "familia": familia,
+            "ingresos_eur": round(ing, 2),
+            "coste_eur": coste,
+            "margen_eur": round(margen, 2),
+            "margen_pct": margen_pct,
+            "kg_vendidos": round(kg, 2),
+            "precio_venta_kg": _precio(ing, kg),
+            "coste_kg": _precio(coste, coste_data.get("kg_compra", 0)),
+        })
+
+    margen_total = total_ingresos - total_costes
+    return {
+        "periodo": {"desde": date_from, "hasta": date_to or "hoy"},
+        "empresa": empresa_nombre or "todas",
+        "resumen": {
+            "ingresos_eur": round(total_ingresos, 2),
+            "costes_eur": round(total_costes, 2),
+            "margen_eur": round(margen_total, 2),
+            "margen_pct": round(margen_total / total_ingresos * 100, 2) if total_ingresos else 0,
+            "kg_totales": round(total_kg, 2),
+        },
+        "por_familia": familias,
+    }
