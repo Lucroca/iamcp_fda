@@ -1,6 +1,19 @@
 from odoo_client import odoo
 
 
+def _enrich_country(partner_ids: list[int]) -> dict[int, str]:
+    """Devuelve {partner_id: pais} para una lista de IDs."""
+    if not partner_ids:
+        return {}
+    partners = odoo.search_read(
+        "res.partner",
+        [["id", "in", partner_ids]],
+        ["id", "country_id"],
+        limit=len(partner_ids) + 10,
+    )
+    return {p["id"]: (p["country_id"][1] if p["country_id"] else "") for p in partners}
+
+
 def search_customers(
     query: str = "",
     is_company: bool | None = None,
@@ -224,12 +237,17 @@ def get_top_customers(
         orderby="amount_total desc",
     )
 
+    rows = groups if not limit else groups[:limit]
+    partner_ids = [g["partner_id"][0] for g in rows if g.get("partner_id")]
+    country_map = _enrich_country(partner_ids)
+
     return [
         {
             "posicion": i + 1,
             "cliente": g["partner_id"][1] if g["partner_id"] else "Sin cliente",
+            "pais": country_map.get(g["partner_id"][0], "") if g.get("partner_id") else "",
             "num_pedidos": g["partner_id_count"],
             "total_comprado": round(g["amount_total"], 2),
         }
-        for i, g in enumerate(groups if not limit else groups[:limit])
+        for i, g in enumerate(rows)
     ]

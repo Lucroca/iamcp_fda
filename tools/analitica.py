@@ -39,19 +39,78 @@ def get_analitica_resumen_por_cliente(
         orderby="amount desc",
     )
     rows = groups if not limit else groups[:limit]
+
+    partner_ids = [g["partner_id"][0] for g in rows if g.get("partner_id")]
+    country_map: dict = {}
+    if partner_ids:
+        partners = odoo.search_read(
+            "res.partner", [["id", "in", partner_ids]],
+            ["id", "country_id"], limit=_BIG,
+        )
+        country_map = {p["id"]: (p["country_id"][1] if p["country_id"] else "") for p in partners}
+
     result = []
     for g in rows:
         if not g.get("partner_id"):
             continue
+        pid = g["partner_id"][0]
         kg = g["unit_amount"] or 0
         imp = g["amount"] or 0
         result.append({
             "cliente": g["partner_id"][1],
+            "pais": country_map.get(pid, ""),
             "importe_eur": round(imp, 2),
             "kg": round(kg, 2),
             "precio_medio_kg": _precio(imp, kg),
         })
     return result
+
+
+def get_analitica_por_pais(
+    date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = ""
+) -> list[dict]:
+    date_from, date_to = _default_year(date_from, date_to)
+    groups = odoo.read_group(
+        "account.analytic.line",
+        _domain(date_from, date_to, familia_nombre, empresa_nombre),
+        ["partner_id", "amount:sum", "unit_amount:sum"],
+        ["partner_id"],
+        orderby="amount desc",
+    )
+
+    partner_ids = [g["partner_id"][0] for g in groups if g.get("partner_id")]
+    country_map: dict = {}
+    if partner_ids:
+        partners = odoo.search_read(
+            "res.partner", [["id", "in", partner_ids]],
+            ["id", "country_id"], limit=_BIG,
+        )
+        country_map = {p["id"]: (p["country_id"][1] if p["country_id"] else "Sin país") for p in partners}
+
+    by_country: dict = {}
+    for g in groups:
+        if not g.get("partner_id"):
+            continue
+        pais = country_map.get(g["partner_id"][0], "Sin país")
+        if pais not in by_country:
+            by_country[pais] = {"importe_eur": 0.0, "kg": 0.0, "num_clientes": 0}
+        by_country[pais]["importe_eur"] += g["amount"] or 0
+        by_country[pais]["kg"] += g["unit_amount"] or 0
+        by_country[pais]["num_clientes"] += 1
+
+    return sorted(
+        [
+            {
+                "pais": pais,
+                "importe_eur": round(d["importe_eur"], 2),
+                "kg": round(d["kg"], 2),
+                "precio_medio_kg": _precio(d["importe_eur"], d["kg"]),
+                "num_clientes": d["num_clientes"],
+            }
+            for pais, d in by_country.items()
+        ],
+        key=lambda x: x["importe_eur"], reverse=True,
+    )
 
 
 def get_analitica_resumen_por_finca(

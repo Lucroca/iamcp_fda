@@ -106,13 +106,19 @@ def get_sales_summary_by_customer(
         orderby="amount_total desc",
     )
 
+    from tools.customers import _enrich_country
+    rows = groups if not limit else groups[:limit]
+    partner_ids = [g["partner_id"][0] for g in rows if g.get("partner_id")]
+    country_map = _enrich_country(partner_ids)
+
     return [
         {
             "cliente": g["partner_id"][1] if g["partner_id"] else "Sin cliente",
+            "pais": country_map.get(g["partner_id"][0], "") if g.get("partner_id") else "",
             "num_pedidos": g["partner_id_count"],
             "total_vendido": round(g["amount_total"], 2),
         }
-        for g in (groups if not limit else groups[:limit])
+        for g in rows
     ]
 
 

@@ -12,7 +12,10 @@ from tools.sales import (
     get_ventas_kilos_por_producto, get_ventas_precio_por_cliente,
     get_albaran_detalle,
 )
-from tools.customers import get_top_customers, get_customer_stats
+from tools.customers import (
+    get_top_customers, get_customer_stats,
+    get_sales_by_country, get_customers_from_country, get_customers_by_country,
+)
 from tools.purchases import get_compras_precio_por_proveedor
 from tools.families import get_familias_listar
 from tools.trazabilidad import (
@@ -30,6 +33,7 @@ from tools.analitica import (
     get_analitica_resumen_por_variedad, get_analitica_resumen_por_parcela,
     get_analitica_detalle_parcela, get_analitica_evolucion_mensual,
     get_analitica_variedad_por_cliente, get_rentabilidad_global,
+    get_analitica_por_pais,
 )
 from tools.invoices import (
     get_invoices, get_revenue_summary,
@@ -75,6 +79,24 @@ def ventas_top_productos_cliente(customer_name: str, limit: int = 0, date_from: 
 def ventas_pedidos_pendientes(limit: int = 50) -> list[dict]:
     """Albaranes (pedidos de venta) pendientes de confirmar."""
     return get_pending_orders(limit=limit)
+
+
+@mcp.tool()
+def ventas_por_pais(date_from: str = "", date_to: str = "") -> list[dict]:
+    """Ventas agrupadas por país del cliente: total facturado y número de pedidos."""
+    return get_sales_by_country(date_from=date_from, date_to=date_to)
+
+
+@mcp.tool()
+def clientes_de_pais(pais: str) -> list[dict]:
+    """Lista los clientes de un país concreto con su volumen total de compra."""
+    return get_customers_from_country(country_name=pais)
+
+
+@mcp.tool()
+def clientes_por_pais() -> list[dict]:
+    """Número de clientes agrupado por país."""
+    return get_customers_by_country()
 
 
 @mcp.tool()
@@ -243,6 +265,12 @@ def analitica_variedad_por_cliente(variedad_nombre: str, date_from: str = "", da
 def rentabilidad_global(date_from: str = "", date_to: str = "", empresa_nombre: str = "") -> dict:
     """Rentabilidad real: ingresos de venta vs coste de liquidación al agricultor. Margen bruto por familia y global. Filtra por empresa (FRESCITRUS, DOÑANA BUS)."""
     return get_rentabilidad_global(date_from=date_from, date_to=date_to, empresa_nombre=empresa_nombre)
+
+
+@mcp.tool()
+def analitica_por_pais(date_from: str = "", date_to: str = "", familia_nombre: str = "", empresa_nombre: str = "") -> list[dict]:
+    """Ventas reales (cuenta analítica) agrupadas por país del cliente: importe, kg, precio medio y número de clientes. Para Frescitrus usa datos reales (no sale.order). Filtra por empresa."""
+    return get_analitica_por_pais(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre, empresa_nombre=empresa_nombre)
 
 
 @mcp.tool()
