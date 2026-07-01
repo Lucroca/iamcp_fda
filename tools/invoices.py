@@ -1,6 +1,65 @@
 from odoo_client import odoo
 
 
+def get_factura_detalle(numero: str) -> dict:
+    invoices = odoo.search_read(
+        "account.move",
+        [["name", "ilike", numero], ["move_type", "=", "out_invoice"]],
+        ["name", "partner_id", "invoice_date", "invoice_date_due",
+         "amount_untaxed", "amount_total", "amount_residual",
+         "payment_state", "state", "ref"],
+        limit=5,
+        order="invoice_date desc",
+    )
+    if not invoices:
+        return {"error": f"Factura '{numero}' no encontrada"}
+
+    inv = invoices[0]
+    lines = odoo.search_read(
+        "account.move.line",
+        [["move_id", "=", inv["id"]], ["display_type", "=", "product"]],
+        ["product_id", "name", "quantity", "price_unit", "discount",
+         "price_subtotal", "product_uom_id", "family_id", "variety_ids"],
+        limit=10000,
+    )
+
+    # Resolver nombres de variedades
+    all_var_ids = list({vid for l in lines for vid in (l.get("variety_ids") or [])})
+    var_names: dict = {}
+    if all_var_ids:
+        varieties = odoo.search_read(
+            "alfinf.variety", [["id", "in", all_var_ids]], ["name"], limit=200
+        )
+        var_names = {v["id"]: v["name"] for v in varieties}
+
+    return {
+        "numero": inv["name"],
+        "cliente": inv["partner_id"][1] if inv["partner_id"] else "",
+        "fecha": inv["invoice_date"] or "",
+        "vencimiento": inv["invoice_date_due"] or "",
+        "estado": inv["state"],
+        "estado_pago": inv["payment_state"],
+        "ref": inv["ref"] or "",
+        "base_imponible": inv["amount_untaxed"],
+        "total": inv["amount_total"],
+        "pendiente": inv["amount_residual"],
+        "lineas": [
+            {
+                "descripcion": l["name"] or "",
+                "producto": l["product_id"][1] if l["product_id"] else "",
+                "familia": l["family_id"][1] if l["family_id"] else "",
+                "variedades": [var_names[vid] for vid in (l.get("variety_ids") or []) if vid in var_names],
+                "cantidad": l["quantity"],
+                "unidad": l["product_uom_id"][1] if l["product_uom_id"] else "",
+                "precio_unit": l["price_unit"],
+                "descuento_pct": l["discount"],
+                "subtotal": round(l["price_subtotal"], 2),
+            }
+            for l in lines
+        ],
+    }
+
+
 def get_invoices(
     state: str = "posted",
     limit: int = 20,

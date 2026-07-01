@@ -13,10 +13,6 @@ from tools.sales import (
     get_albaran_detalle,
 )
 from tools.customers import get_top_customers, get_customer_stats
-from tools.invoices import (
-    get_invoices, get_revenue_summary,
-    get_overdue_summary, get_invoices_by_customer,
-)
 from tools.purchases import get_compras_precio_por_proveedor
 from tools.families import get_familias_listar
 from tools.trazabilidad import (
@@ -31,7 +27,12 @@ from tools.pallets import (
 from tools.analitica import (
     get_analitica_resumen_por_cliente, get_analitica_resumen_por_finca,
     get_analitica_resumen_por_variedad, get_analitica_resumen_por_parcela,
-    get_analitica_detalle_parcela,
+    get_analitica_detalle_parcela, get_analitica_evolucion_mensual,
+    get_analitica_variedad_por_cliente,
+)
+from tools.invoices import (
+    get_invoices, get_revenue_summary,
+    get_overdue_summary, get_invoices_by_customer, get_factura_detalle,
 )
 
 mcp = FastMCP("Odoo 18 — Fruta de Andalucía",
@@ -223,6 +224,24 @@ def analitica_por_parcela(date_from: str = "", date_to: str = "", agricultor_nom
 def analitica_detalle_parcela(trazabilidad: str) -> dict:
     """Detalle completo de una parcela: agricultor, finca, variedad, y todos los movimientos individuales con cliente, albarán, factura, pallet, kg e importe."""
     return get_analitica_detalle_parcela(trazabilidad=trazabilidad)
+
+
+@mcp.tool()
+def analitica_evolucion_mensual(date_from: str = "", date_to: str = "", familia_nombre: str = "") -> list[dict]:
+    """Evolución mensual de importe, kg y precio medio. Por defecto año en curso. Filtra por familia."""
+    return get_analitica_evolucion_mensual(date_from=date_from, date_to=date_to, familia_nombre=familia_nombre)
+
+
+@mcp.tool()
+def analitica_variedad_por_cliente(variedad_nombre: str, date_from: str = "", date_to: str = "") -> list[dict]:
+    """Para una variedad concreta, qué clientes la compran, cuántos kg y a qué precio medio. Por defecto año en curso."""
+    return get_analitica_variedad_por_cliente(variedad_nombre=variedad_nombre, date_from=date_from, date_to=date_to)
+
+
+@mcp.tool()
+def factura_detalle(numero: str) -> dict:
+    """Detalle completo de una factura: cabecera y todas las líneas con producto, variedad, cantidad, precio, descuento e importe."""
+    return get_factura_detalle(numero=numero)
 
 
 if __name__ == "__main__":

@@ -240,3 +240,65 @@ def get_analitica_resumen_por_parcela(
             "precio_medio_kg": _precio(imp, kg),
         })
     return result
+
+
+def get_analitica_evolucion_mensual(
+    date_from: str = "",
+    date_to: str = "",
+    familia_nombre: str = "",
+) -> list[dict]:
+    date_from, date_to = _default_year(date_from, date_to)
+    lines = odoo.search_read(
+        "account.analytic.line",
+        _domain(date_from, date_to, familia_nombre),
+        ["date", "amount", "unit_amount"],
+        limit=_BIG,
+    )
+    by_month: dict = {}
+    for l in lines:
+        mes = l["date"][:7]  # YYYY-MM
+        if mes not in by_month:
+            by_month[mes] = {"importe_eur": 0.0, "kg": 0.0}
+        by_month[mes]["importe_eur"] += l["amount"] or 0
+        by_month[mes]["kg"] += l["unit_amount"] or 0
+
+    return [
+        {
+            "mes": mes,
+            "importe_eur": round(datos["importe_eur"], 2),
+            "kg": round(datos["kg"], 2),
+            "precio_medio_kg": _precio(datos["importe_eur"], datos["kg"]),
+        }
+        for mes, datos in sorted(by_month.items())
+    ]
+
+
+def get_analitica_variedad_por_cliente(
+    variedad_nombre: str,
+    date_from: str = "",
+    date_to: str = "",
+) -> list[dict]:
+    date_from, date_to = _default_year(date_from, date_to)
+    domain = _domain(date_from, date_to)
+    domain.append(["variety_id.name", "ilike", variedad_nombre])
+
+    groups = odoo.read_group(
+        "account.analytic.line",
+        domain,
+        ["partner_id", "amount:sum", "unit_amount:sum"],
+        ["partner_id"],
+        orderby="amount desc",
+    )
+    result = []
+    for g in groups:
+        if not g.get("partner_id"):
+            continue
+        kg = g["unit_amount"] or 0
+        imp = g["amount"] or 0
+        result.append({
+            "cliente": g["partner_id"][1],
+            "importe_eur": round(imp, 2),
+            "kg": round(kg, 2),
+            "precio_medio_kg": _precio(imp, kg),
+        })
+    return result
