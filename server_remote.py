@@ -24,6 +24,7 @@ from tools.pallets import (
     get_pallet_trazabilidad, get_pallets_entradas_agricultor,
     get_pallets_stock,
 )
+from tools.buscar import get_buscar
 from tools.analitica import (
     get_analitica_resumen_por_cliente, get_analitica_resumen_por_finca,
     get_analitica_resumen_por_variedad, get_analitica_resumen_por_parcela,
@@ -242,6 +243,12 @@ def analitica_variedad_por_cliente(variedad_nombre: str, date_from: str = "", da
 def rentabilidad_global(date_from: str = "", date_to: str = "", empresa_nombre: str = "") -> dict:
     """Rentabilidad real: ingresos de venta vs coste de liquidación al agricultor. Margen bruto por familia y global. Filtra por empresa (FRESCITRUS, DOÑANA BUS)."""
     return get_rentabilidad_global(date_from=date_from, date_to=date_to, empresa_nombre=empresa_nombre)
+
+
+@mcp.tool()
+def buscar(referencia: str) -> dict:
+    """Búsqueda universal: dado cualquier código (pallet, trazabilidad, albarán, factura) devuelve todo lo relacionado en una sola llamada."""
+    return get_buscar(referencia=referencia)
 
 
 @mcp.tool()
