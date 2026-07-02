@@ -112,9 +112,9 @@ def clientes_top(date_from: str = "", date_to: str = "", limit: int = 0) -> list
 
 
 @mcp.tool()
-def facturas_listar(state: str = "posted", limit: int = 20, date_from: str = "", date_to: str = "", overdue_only: bool = False) -> list[dict]:
-    """Lista facturas de clientes."""
-    return get_invoices(state=state, limit=limit, date_from=date_from, date_to=date_to, overdue_only=overdue_only)
+def facturas_listar(state: str = "posted", limit: int = 20, date_from: str = "", date_to: str = "", overdue_only: bool = False, tipo: str = "all") -> list[dict]:
+    """Lista facturas y abonos/rectificativas de clientes. tipo: 'all' (todo), 'invoice' (solo facturas), 'refund' (solo abonos). Los abonos aparecen con importe negativo."""
+    return get_invoices(state=state, limit=limit, date_from=date_from, date_to=date_to, overdue_only=overdue_only, tipo=tipo)
 
 
 @mcp.tool()
@@ -125,7 +125,7 @@ def facturas_por_cliente(customer_name: str, limit: int = 5) -> list[dict]:
 
 @mcp.tool()
 def facturas_resumen_ingresos(date_from: str = "", date_to: str = "") -> dict:
-    """Resumen de ingresos: facturado, cobrado y pendiente."""
+    """Resumen de ingresos netos: total facturas brutas, total abonos/rectificativas, neto real, cobrado y pendiente."""
     return get_revenue_summary(date_from=date_from, date_to=date_to)
 
 

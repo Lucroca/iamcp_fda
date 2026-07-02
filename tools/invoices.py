@@ -1,11 +1,18 @@
 from odoo_client import odoo
 
+_TIPOS_FACTURA = ["out_invoice", "out_refund"]
+
+
+def _signo(move_type: str) -> int:
+    """Las rectificativas (out_refund) tienen importe positivo en BD pero son negativos económicamente."""
+    return -1 if move_type == "out_refund" else 1
+
 
 def get_factura_detalle(numero: str) -> dict:
     invoices = odoo.search_read(
         "account.move",
-        [["name", "ilike", numero], ["move_type", "=", "out_invoice"]],
-        ["name", "partner_id", "invoice_date", "invoice_date_due",
+        [["name", "ilike", numero], ["move_type", "in", _TIPOS_FACTURA]],
+        ["name", "move_type", "partner_id", "invoice_date", "invoice_date_due",
          "amount_untaxed", "amount_total", "amount_residual",
          "payment_state", "state", "ref"],
         limit=5,
@@ -15,6 +22,7 @@ def get_factura_detalle(numero: str) -> dict:
         return {"error": f"Factura '{numero}' no encontrada"}
 
     inv = invoices[0]
+    signo = _signo(inv["move_type"])
     lines = odoo.search_read(
         "account.move.line",
         [["move_id", "=", inv["id"]], ["display_type", "=", "product"]],
@@ -23,7 +31,6 @@ def get_factura_detalle(numero: str) -> dict:
         limit=10000,
     )
 
-    # Resolver nombres de variedades
     all_var_ids = list({vid for l in lines for vid in (l.get("variety_ids") or [])})
     var_names: dict = {}
     if all_var_ids:
@@ -34,15 +41,16 @@ def get_factura_detalle(numero: str) -> dict:
 
     return {
         "numero": inv["name"],
+        "tipo": "Abono/Rectificativa" if inv["move_type"] == "out_refund" else "Factura",
         "cliente": inv["partner_id"][1] if inv["partner_id"] else "",
         "fecha": inv["invoice_date"] or "",
         "vencimiento": inv["invoice_date_due"] or "",
         "estado": inv["state"],
         "estado_pago": inv["payment_state"],
         "ref": inv["ref"] or "",
-        "base_imponible": inv["amount_untaxed"],
-        "total": inv["amount_total"],
-        "pendiente": inv["amount_residual"],
+        "base_imponible": round(inv["amount_untaxed"] * signo, 2),
+        "total": round(inv["amount_total"] * signo, 2),
+        "pendiente": round(inv["amount_residual"] * signo, 2),
         "lineas": [
             {
                 "descripcion": l["name"] or "",
@@ -53,7 +61,7 @@ def get_factura_detalle(numero: str) -> dict:
                 "unidad": l["product_uom_id"][1] if l["product_uom_id"] else "",
                 "precio_unit": l["price_unit"],
                 "descuento_pct": l["discount"],
-                "subtotal": round(l["price_subtotal"], 2),
+                "subtotal": round(l["price_subtotal"] * signo, 2),
             }
             for l in lines
         ],
@@ -66,18 +74,23 @@ def get_invoices(
     date_from: str = "",
     date_to: str = "",
     overdue_only: bool = False,
+    tipo: str = "all",
 ) -> list[dict]:
     """
-    Obtiene facturas de clientes.
+    Lista facturas y abonos de clientes.
 
     Args:
-        state: 'draft' (borrador), 'posted' (publicada), 'cancel' (cancelada), 'all'
-        limit: Máximo de resultados (1-100)
-        date_from: Fecha inicio YYYY-MM-DD
-        date_to: Fecha fin YYYY-MM-DD
-        overdue_only: Si True, solo facturas vencidas con saldo pendiente
+        state: 'draft', 'posted', 'cancel', 'all'
+        tipo: 'all' (facturas + abonos), 'invoice' (solo facturas), 'refund' (solo abonos)
     """
-    domain: list = [("move_type", "=", "out_invoice")]
+    if tipo == "invoice":
+        tipos = ["out_invoice"]
+    elif tipo == "refund":
+        tipos = ["out_refund"]
+    else:
+        tipos = _TIPOS_FACTURA
+
+    domain: list = [("move_type", "in", tipos)]
     if state != "all":
         domain.append(("state", "=", state))
     if date_from:
@@ -99,9 +112,8 @@ def get_invoices(
         model="account.move",
         domain=domain,
         fields=[
-            "name", "partner_id", "invoice_date", "invoice_date_due",
-            "amount_total", "amount_residual", "payment_state", "state",
-            "currency_id",
+            "name", "move_type", "partner_id", "invoice_date", "invoice_date_due",
+            "amount_total", "amount_residual", "payment_state", "state", "currency_id",
         ],
         limit=limit,
         order="invoice_date desc",
@@ -110,11 +122,12 @@ def get_invoices(
     return [
         {
             "numero": inv["name"],
+            "tipo": "Abono" if inv["move_type"] == "out_refund" else "Factura",
             "cliente": inv["partner_id"][1] if inv["partner_id"] else "",
             "fecha_factura": inv["invoice_date"] or "",
             "fecha_vencimiento": inv["invoice_date_due"] or "",
-            "total": inv["amount_total"],
-            "pendiente": inv["amount_residual"],
+            "total": round(inv["amount_total"] * _signo(inv["move_type"]), 2),
+            "pendiente": round(inv["amount_residual"] * _signo(inv["move_type"]), 2),
             "estado_pago": inv["payment_state"],
             "estado": inv["state"],
             "moneda": inv["currency_id"][1] if inv["currency_id"] else "",
@@ -128,14 +141,6 @@ def get_invoices_by_customer(
     limit: int = 5,
     state: str = "posted",
 ) -> list[dict]:
-    """
-    Lista las últimas facturas de un cliente concreto.
-
-    Args:
-        customer_name: Nombre o parte del nombre del cliente
-        limit: Número de facturas a devolver (1-50)
-        state: 'posted', 'draft', 'cancel' o 'all'
-    """
     partners = odoo.search_read(
         model="res.partner",
         domain=[("name", "ilike", customer_name)],
@@ -148,7 +153,7 @@ def get_invoices_by_customer(
     partner_ids = [p["id"] for p in partners]
 
     domain: list = [
-        ("move_type", "=", "out_invoice"),
+        ("move_type", "in", _TIPOS_FACTURA),
         ("partner_id", "in", partner_ids),
     ]
     if state != "all":
@@ -160,7 +165,7 @@ def get_invoices_by_customer(
         model="account.move",
         domain=domain,
         fields=[
-            "name", "partner_id", "invoice_date", "invoice_date_due",
+            "name", "move_type", "partner_id", "invoice_date", "invoice_date_due",
             "amount_total", "amount_residual", "payment_state", "state",
         ],
         limit=limit,
@@ -170,11 +175,12 @@ def get_invoices_by_customer(
     return [
         {
             "numero": inv["name"],
+            "tipo": "Abono" if inv["move_type"] == "out_refund" else "Factura",
             "cliente": inv["partner_id"][1] if inv["partner_id"] else "",
             "fecha_factura": inv["invoice_date"] or "",
             "fecha_vencimiento": inv["invoice_date_due"] or "",
-            "total": inv["amount_total"],
-            "pendiente": inv["amount_residual"],
+            "total": round(inv["amount_total"] * _signo(inv["move_type"]), 2),
+            "pendiente": round(inv["amount_residual"] * _signo(inv["move_type"]), 2),
             "estado_pago": inv["payment_state"],
             "estado": inv["state"],
         }
@@ -187,15 +193,9 @@ def get_revenue_summary(
     date_to: str = "",
     seller_id: int = 0,
 ) -> dict:
-    """
-    Resumen de ingresos: total facturado, cobrado y pendiente.
-
-    Args:
-        date_from: Fecha inicio YYYY-MM-DD
-        date_to: Fecha fin YYYY-MM-DD
-    """
+    """Resumen de ingresos netos: facturas menos abonos/rectificativas."""
     domain: list = [
-        ("move_type", "=", "out_invoice"),
+        ("move_type", "in", _TIPOS_FACTURA),
         ("state", "=", "posted"),
     ]
     if date_from:
@@ -208,22 +208,39 @@ def get_revenue_summary(
     invoices = odoo.search_read(
         model="account.move",
         domain=domain,
-        fields=["amount_total", "amount_residual", "payment_state"],
+        fields=["move_type", "amount_total", "amount_residual", "payment_state"],
         limit=0,
     )
 
-    total = sum(i["amount_total"] for i in invoices)
-    pendiente = sum(i["amount_residual"] for i in invoices)
-    cobrado = total - pendiente
+    total_facturas = 0.0
+    total_abonos = 0.0
+    pendiente = 0.0
+    num_facturas = 0
+    num_abonos = 0
+    por_estado: dict = {}
 
-    por_estado = {}
     for inv in invoices:
-        estado = inv["payment_state"]
-        por_estado[estado] = por_estado.get(estado, 0) + inv["amount_total"]
+        signo = _signo(inv["move_type"])
+        importe = inv["amount_total"]
+        if inv["move_type"] == "out_refund":
+            total_abonos += importe
+            num_abonos += 1
+        else:
+            total_facturas += importe
+            num_facturas += 1
+            estado = inv["payment_state"]
+            por_estado[estado] = por_estado.get(estado, 0) + importe
+        pendiente += inv["amount_residual"] * signo
+
+    total_neto = total_facturas - total_abonos
+    cobrado = total_neto - pendiente
 
     return {
-        "num_facturas": len(invoices),
-        "total_facturado": round(total, 2),
+        "num_facturas": num_facturas,
+        "num_abonos": num_abonos,
+        "total_facturas_bruto": round(total_facturas, 2),
+        "total_abonos": round(total_abonos, 2),
+        "total_neto": round(total_neto, 2),
         "total_cobrado": round(cobrado, 2),
         "total_pendiente": round(pendiente, 2),
         "por_estado_pago": {k: round(v, 2) for k, v in por_estado.items()},
@@ -231,9 +248,7 @@ def get_revenue_summary(
 
 
 def get_overdue_summary() -> list[dict]:
-    """
-    Lista clientes con facturas vencidas, ordenados por mayor deuda pendiente.
-    """
+    """Clientes con facturas vencidas ordenados por mayor deuda (solo facturas, no abonos)."""
     from datetime import date
     today = date.today().isoformat()
 
