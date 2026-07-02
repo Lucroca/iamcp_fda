@@ -1,0 +1,52 @@
+# docker-compose.example.yml
+#
+# Plantilla para desplegar el MCP en el VPS.
+# Copia este fichero al servidor con el nombre docker-compose.yml
+# y ajusta: image, container_name y MCP_PORT según el cliente.
+#
+# Estructura en el VPS:
+#   /home/ubuntu/<cliente>/
+#       docker-compose.yml       ← este fichero (adaptado)
+#       app/                     ← git clone del repo
+#           .env                 ← credenciales Odoo (NO está en el repo)
+#           server_remote.py
+#           tools/
+#           ...
+#
+# El volumen monta ./app en /app dentro del contenedor, por eso
+# un simple "git pull" dentro de app/ aplica cambios sin reconstruir imagen.
+# Solo hay que reconstruir (--build) si cambia requirements_remote.txt.
+#
+# Deploy inicial:
+#   docker compose up -d --build
+#
+# Actualización de código (lo habitual):
+#   cd app && git pull && cd .. && docker compose up -d --force-recreate
+#
+# Actualización de dependencias (si cambia requirements_remote.txt):
+#   cd app && git pull && cd .. && docker compose up -d --build --force-recreate
+
+services:
+  mcp:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.mcp
+    image: <cliente>_mcp:latest        # ej: frescitrus_mcp, iafda_mcp
+    container_name: <cliente>_mcp      # ej: frescitrus_mcp, iafda_mcp
+    working_dir: /app
+    volumes:
+      - ./app:/app                     # código en vivo, git pull es suficiente
+    environment:
+      - MCP_PORT=8080                  # puerto interno (cambiar si hay conflicto)
+    ports:
+      - "8080:8080"                    # puerto_host:puerto_contenedor
+    restart: unless-stopped
+
+# ── Clientes activos en el VPS ──────────────────────────────────────────────
+#
+# Frescitrus  → /home/ubuntu/frescitrus/   puerto 8081
+# FDA         → /home/ubuntu/iafda/        puerto 8080
+#
+# Nginx Proxy Manager gestiona el SSL y enruta por subdominio:
+#   ifrescitrus.alfinf.com  →  localhost:8081
+#   iafda.alfinf.com        →  localhost:8080

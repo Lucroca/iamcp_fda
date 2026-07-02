@@ -84,13 +84,10 @@ leería el token del header HTTP y cargaría las credenciales correspondientes.
 
 ---
 
-## Dockerfile.mcp — Dockerfile alternativo (sin requirements)
+## Dockerfile.mcp — (referencia, el activo está en la raíz del proyecto)
 
-**Qué era:** Versión más ligera del Dockerfile que instalaba las dependencias
-directamente en el `RUN` en lugar de copiar `requirements_remote.txt`.
-
-**Por qué se dejó de usar:** El `Dockerfile` de la raíz es más correcto: copia
-el requirements primero para aprovechar la caché de Docker en builds sucesivos.
+**Nota:** `Dockerfile.mcp` fue restaurado a la raíz del proyecto porque el VPS
+lo referencia en el `docker-compose.yml`. La copia aquí es solo histórica.
 
 ---
 

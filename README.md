@@ -63,22 +63,34 @@ cd app
 nano .env
 ```
 
-Crear `docker-compose.yml` en `/home/ubuntu/nuevo_cliente/`:
+Crear `docker-compose.yml` en `/home/ubuntu/nuevo_cliente/` basándote en `docker-compose.example.yml` del repo:
 
 ```yaml
 services:
   mcp:
-    build: ./app
-    restart: unless-stopped
-    env_file: ./app/.env
+    build:
+      context: ./app
+      dockerfile: Dockerfile.mcp
+    image: nuevo_cliente_mcp:latest
+    container_name: nuevo_cliente_mcp
+    working_dir: /app
+    volumes:
+      - ./app:/app          # código en vivo, git pull es suficiente
+    environment:
+      - MCP_PORT=8082       # cambiar si el puerto está ocupado
     ports:
-      - "8082:8080"   # cambiar puerto si ya está ocupado
+      - "8082:8082"
+    restart: unless-stopped
 ```
 
 ```bash
-# Arrancar
-docker compose up -d
+# Primera vez: construir imagen y arrancar
+docker compose up -d --build
 ```
+
+> **Nota sobre el `.env`:** Las credenciales de Odoo van en `./app/.env`.
+> El contenedor monta `./app` como volumen, así que `python-dotenv` las lee
+> directamente al arrancar. No van en el `docker-compose.yml`.
 
 ### 2. En Nginx Proxy Manager
 
@@ -113,6 +125,11 @@ docker compose up -d --force-recreate
 ```
 
 > **Importante:** usar siempre `--force-recreate`, no `restart`. El restart no recarga el `.env`.
+>
+> Si cambia `requirements_remote.txt` hay que añadir `--build` para reconstruir la imagen:
+> ```bash
+> docker compose up -d --build --force-recreate
+> ```
 
 ---
 
@@ -129,11 +146,13 @@ docker compose up -d --force-recreate
 
 ```
 mcp_ia/
-├── server_remote.py        # Servidor MCP (SSE) — registra todas las tools
-├── config.py               # Lee variables de entorno
-├── odoo_client.py          # Cliente XML-RPC para Odoo (SSL desactivado)
-├── Dockerfile              # Imagen Docker
-├── requirements_remote.txt # Dependencias Python
+├── server_remote.py           # Servidor MCP (SSE) — registra todas las tools
+├── config.py                  # Lee variables de entorno
+├── odoo_client.py             # Cliente XML-RPC para Odoo (SSL desactivado)
+├── Dockerfile                 # Imagen Docker (alternativa, copia código)
+├── Dockerfile.mcp             # Imagen Docker usada por el VPS (solo paquetes, código via volumen)
+├── docker-compose.example.yml # Plantilla docker-compose para desplegar en VPS
+├── requirements_remote.txt    # Dependencias Python
 ├── tools/
 │   ├── analitica.py        # account.analytic.line (Frescitrus)
 │   ├── buscar.py           # Búsqueda universal por referencia
