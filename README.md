@@ -149,37 +149,130 @@ mcp_ia/
 
 ---
 
-## Tools disponibles (~42)
+## Tools disponibles (42)
+
+> **Parámetros comunes:**
+> - `date_from` / `date_to`: formato `YYYY-MM-DD`. Si se omiten, la mayoría de tools usa el año en curso por defecto.
+> - `limit`: número de resultados. `0` = todos los datos (sin límite).
+> - `familia_nombre`: filtra por nombre de familia de producto (búsqueda parcial, sin distinción may/min).
+> - `empresa_nombre`: filtra por empresa contable, p.ej. `"FRESCITRUS"` o `"DOÑANA BUS"` (solo tools de analítica).
+
+---
 
 ### Ventas / Albaranes
-`ventas_listar` · `ventas_resumen_por_cliente` · `ventas_resumen_por_vendedor` · `ventas_top_productos` · `ventas_top_productos_cliente` · `ventas_pedidos_pendientes` · `ventas_kilos_por_producto` · `ventas_precio_por_cliente` · `albaran_detalle`
+> Modelo base: `sale.order`. En Frescitrus los importes de `sale.order` son 0 — usar tools de **Analítica** para importes reales.
+
+| Tool | Parámetros | Qué devuelve |
+|---|---|---|
+| `ventas_listar` | `state` (all/sale/done/draft), `limit`, `date_from`, `date_to` | Lista de albaranes con cliente, fecha, importe y estado |
+| `ventas_resumen_por_cliente` | `date_from`, `date_to`, `limit` | Total de ventas agrupado por cliente |
+| `ventas_resumen_por_vendedor` | `date_from`, `date_to` | Total de ventas por centro de manipulación |
+| `ventas_top_productos` | `limit`, `date_from`, `date_to`, `familia_nombre` | Productos ordenados por importe con familia |
+| `ventas_top_productos_cliente` | `customer_name` *, `limit`, `date_from`, `date_to` | Productos vendidos a un cliente concreto |
+| `ventas_pedidos_pendientes` | `limit` | Albaranes en estado borrador/pendiente |
+| `ventas_kilos_por_producto` | `date_from`, `date_to`, `customer_name`, `familia_nombre`, `limit` | Kg vendidos por producto con precio medio |
+| `ventas_precio_por_cliente` | `product_name` *, `date_from`, `date_to` | Precio medio/mín/máx que paga cada cliente por ese producto |
+| `albaran_detalle` | `referencia` * | Cabecera + todas las líneas del albarán (productos, variedades, cantidades) |
+
+---
 
 ### Clientes
-`clientes_top` · `clientes_estadisticas` · `clientes_por_pais` · `clientes_de_pais`
+> Modelo base: `res.partner` + `sale.order`.
+
+| Tool | Parámetros | Qué devuelve |
+|---|---|---|
+| `clientes_top` | `date_from`, `date_to`, `limit` | Clientes ordenados por volumen de compra con país |
+| `clientes_estadisticas` | `customer_name` * | Pedidos, facturas emitidas, total facturado y deuda pendiente de un cliente |
+| `clientes_por_pais` | — | Número de clientes empresa agrupado por país |
+| `clientes_de_pais` | `pais` * | Lista de clientes de un país concreto con su volumen |
+| `ventas_por_pais` | `date_from`, `date_to` | Ventas agrupadas por país (basado en sale.order) |
+
+---
 
 ### Facturas
-`facturas_listar` · `facturas_por_cliente` · `facturas_resumen_ingresos` · `facturas_vencidas_por_cliente` · `factura_detalle`
+> Modelo base: `account.move`. Incluye facturas (`out_invoice`, prefijo DÑ/INV) y abonos/rectificativas (`out_refund`, prefijo RDÑ). Los abonos se devuelven con importe negativo.
+
+| Tool | Parámetros | Qué devuelve |
+|---|---|---|
+| `facturas_listar` | `state` (posted/draft/cancel/all), `limit`, `date_from`, `date_to`, `tipo` (all/invoice/refund), `overdue_only` | Lista de facturas y abonos con estado de pago |
+| `facturas_por_cliente` | `customer_name` *, `limit` | Últimas facturas de un cliente concreto |
+| `facturas_resumen_ingresos` | `date_from`, `date_to` | Total bruto, total abonos, **neto real**, cobrado y pendiente |
+| `facturas_vencidas_por_cliente` | — | Clientes con deuda vencida ordenados por mayor importe |
+| `factura_detalle` | `numero` * | Cabecera + todas las líneas (producto, variedad, cantidad, precio, descuento, subtotal). Funciona con DÑ/... y RDÑ/... |
+
+---
 
 ### Compras
-`compras_precio_por_proveedor`
+> Modelo base: `purchase.order.line`.
 
-### Familias
-`familias_listar`
+| Tool | Parámetros | Qué devuelve |
+|---|---|---|
+| `compras_precio_por_proveedor` | `product_name` *, `date_from`, `date_to` | Precio de un producto por proveedor (precio medio, mín, máx), ordenado de menor a mayor |
+
+---
+
+### Familias y variedades
+> Modelo base: `alfinf.family`.
+
+| Tool | Parámetros | Qué devuelve |
+|---|---|---|
+| `familias_listar` | — | Todas las familias con sus variedades, código intrastat y tolerancias |
+
+---
 
 ### Trazabilidad
-`trazabilidad_parcelas` · `trazabilidad_kilos_por_parcela` · `trazabilidad_detalle_parcela`
+> Modelo base: `alfinf.trace` + `alfinf.pallet.out`. Nota: los precios en estas tools son 0 en Frescitrus — usar `analitica_detalle_parcela` para precios reales.
+
+| Tool | Parámetros | Qué devuelve |
+|---|---|---|
+| `trazabilidad_parcelas` | `agricultor_nombre`, `finca_nombre`, `familia_nombre` | Lista de parcelas con agricultor, finca, variedad, hectáreas y campaña |
+| `trazabilidad_kilos_por_parcela` | `date_from`, `date_to`, `agricultor_nombre`, `familia_nombre`, `limit` | Kg e importe vendidos por parcela |
+| `trazabilidad_detalle_parcela` | `trazabilidad` * | Detalle completo: agricultor, finca, variedad + todos los pallets y albaranes |
+
+---
 
 ### Pallets
-`pallets_listar` · `pallets_sin_albaran` · `pallets_con_albaran` · `pallet_trazabilidad` · `pallets_entradas_agricultor` · `pallets_stock`
+> Modelo base: `alfinf.pallet.out` (salida) y `alfinf.pallet.in` (entrada).
 
-### Analítica (Frescitrus — account.analytic.line)
-`analitica_por_cliente` · `analitica_por_finca` · `analitica_por_variedad` · `analitica_por_parcela` · `analitica_detalle_parcela` · `analitica_evolucion_mensual` · `analitica_variedad_por_cliente` · `analitica_por_pais` · `analitica_por_agricultor` · `analitica_por_transportista` · `rentabilidad_global`
+| Tool | Parámetros | Qué devuelve |
+|---|---|---|
+| `pallets_listar` | `limit`, `date_from`, `date_to`, `solo_sin_albaran`, `familia_nombre` | Lista de pallets de salida con columna albaran (vacía si sin asignar) |
+| `pallets_sin_albaran` | `limit`, `date_from`, `date_to` | Pallets de salida sin albarán asignado |
+| `pallets_con_albaran` | `limit`, `date_from`, `date_to` | Pallets de salida con albarán, mostrando cliente y pedido |
+| `pallet_trazabilidad` | `referencia` * | Trazabilidad completa de un pallet: albarán, cliente, agricultor, variedad |
+| `pallets_entradas_agricultor` | `date_from`, `date_to`, `limit` | Entradas de pallets agrupadas por agricultor |
+| `pallets_stock` | `agricultor_name` | Stock actual de pallets de entrada pendientes de procesar |
 
-### País
-`ventas_por_pais`
+---
 
-### Búsqueda
-`buscar`
+### Analítica — solo Frescitrus
+> Modelo base: `account.analytic.line` (category=invoice). Fuente de verdad para importes y precios reales en Frescitrus. Campos clave: `amount` (€), `unit_amount` (kg), `price_unit` (€/kg).
+
+| Tool | Parámetros | Qué devuelve |
+|---|---|---|
+| `analitica_por_cliente` | `date_from`, `date_to`, `familia_nombre`, `empresa_nombre`, `limit` | Clientes con importe €, kg y precio medio. Incluye país |
+| `analitica_por_finca` | `date_from`, `date_to`, `familia_nombre`, `empresa_nombre`, `limit` | Fincas con importe € y kg |
+| `analitica_por_variedad` | `date_from`, `date_to`, `familia_nombre`, `empresa_nombre`, `limit` | Variedades con importe €, kg y precio medio |
+| `analitica_por_parcela` | `date_from`, `date_to`, `agricultor_nombre`, `familia_nombre`, `empresa_nombre`, `limit` | Parcelas (trazabilidad) con importe € y kg |
+| `analitica_por_agricultor` | `date_from`, `date_to`, `familia_nombre`, `empresa_nombre`, `limit` | Agricultores con importe € y kg vendidos desde sus parcelas |
+| `analitica_por_transportista` | `date_from`, `date_to`, `familia_nombre`, `empresa_nombre`, `limit` | Transportistas con importe € y kg transportados |
+| `analitica_por_pais` | `date_from`, `date_to`, `familia_nombre`, `empresa_nombre` | País de destino real (campo `destination_country`) con importe €, kg y nº clientes |
+| `analitica_detalle_parcela` | `trazabilidad` * | **Detalle completo** de una parcela: todos los movimientos con cliente, albarán, factura, pallet, agricultor, transportista, kg, cajas, precio real, importe, merma, gastos transporte y fechas |
+| `analitica_evolucion_mensual` | `date_from`, `date_to`, `familia_nombre`, `empresa_nombre` | Importe €, kg y precio medio agrupados por mes |
+| `analitica_variedad_por_cliente` | `variedad_nombre` *, `date_from`, `date_to`, `empresa_nombre` | Para una variedad: qué clientes la compran, kg y precio medio por cliente |
+| `rentabilidad_global` | `date_from`, `date_to`, `empresa_nombre` | Ingresos vs costes (liquidación agricultor), margen bruto € y % por familia y global |
+
+---
+
+### Búsqueda universal
+
+| Tool | Parámetros | Qué devuelve |
+|---|---|---|
+| `buscar` | `referencia` * | Busca en 5 modelos simultáneamente (pallets, trazabilidad, albaranes, facturas, analítica) cualquier código y devuelve todo lo encontrado |
+
+---
+
+> `*` = parámetro obligatorio
 
 ---
 
